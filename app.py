@@ -125,7 +125,7 @@ if st.session_state.phase == 'setup':
     col_empty1, col_form, col_empty2 = st.columns([1, 2, 1])
     with col_form:
         st.markdown("### 📝 드래프트 설정")
-        names_input = st.text_area("1. 소환사 명단 입력 (쉼표 구분)", "동후, 성규, 재원, 원빈, 호연, 민준, 선호, 태섭, 현일, 영동")
+        names_input = st.text_area("1. 소환사 명단 입력 (쉼표 구분)", "동후, 성규, 재원, 원빈, 호연, 영빈, 선호, 태섭, 현일, 영동")
 
         if names_input:
             name_list = [n.strip() for n in names_input.split(",") if n.strip()]
@@ -183,4 +183,5 @@ else:
             icon = "👑" if i == 0 else "⚔️"
             st.markdown(f'<div class="lol-card card-b">{icon} {m}</div>', unsafe_allow_html=True)
         for _ in range(5 - len(st.session_state.team_b["members"])):
+
             st.markdown('<div class="lol-card card-empty">Empty</div>', unsafe_allow_html=True)
