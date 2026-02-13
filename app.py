@@ -90,7 +90,7 @@ def handle_bid(val_a, val_b):
     if val_a == val_b:
         tied_player = st.session_state.pool.pop(0)
         st.session_state.pool.append(tied_player)
-        st.session_state.last_msg = f"⚠️ 동점({val_a}pt)! {tied_player}님은 명단 맨 뒤로 이동합니다."
+        st.session_state.last_msg = f"⚠️ 동점! {tied_player}님은 명단 맨 뒤로 이동합니다."
         st.toast(st.session_state.last_msg, icon="🔄")
         return
 
@@ -185,3 +185,4 @@ else:
         for _ in range(5 - len(st.session_state.team_b["members"])):
 
             st.markdown('<div class="lol-card card-empty">Empty</div>', unsafe_allow_html=True)
+
