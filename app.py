@@ -73,7 +73,6 @@ def start_auction_process(names, leader_a, leader_b):
     st.session_state.phase = 'auction'
 
 def handle_bid(val_a, val_b):
-    # 입찰가 범위 제한 및 데이터 타입 보호
     if not (0 <= val_a <= 100) or not (0 <= val_b <= 100):
         st.toast("⚠️ 입찰액은 0~100 사이여야 합니다!", icon="❌")
         return
@@ -109,12 +108,19 @@ def handle_bid(val_a, val_b):
         st.session_state.phase = 'result'
 
 def execute_manual_swap(line1, line2):
-    for target_idx in [line1, line2]:
-        p_a = st.session_state.team_a["members"][target_idx]
-        p_b = st.session_state.team_b["members"][target_idx]
-        st.session_state.team_a["members"][target_idx] = p_b
-        st.session_state.team_b["members"][target_idx] = p_a
-    st.success(f"🔄 트레이드 완료: {line1}번 및 {line2}번 픽 라인이 교체되었습니다.")
+    try:
+        # 두 라인이 다를 때만 스왑 진행
+        lines_to_swap = list(set([line1, line2])) # 중복 제거
+        
+        for idx in lines_to_swap:
+            p_a = st.session_state.team_a["members"][idx]
+            p_b = st.session_state.team_b["members"][idx]
+            st.session_state.team_a["members"][idx] = p_b
+            st.session_state.team_b["members"][idx] = p_a
+        
+        st.success(f"🔄 트레이드 완료: {', '.join([str(l)+'번' for l in lines_to_swap])} 픽 라인이 교체되었습니다.")
+    except Exception as e:
+        st.error(f"트레이드 중 오류가 발생했습니다: {e}")
 
 # --- 4. 메인 UI ---
 st.markdown("<h1 style='text-align: center;'>⚔️ 마법공학 내전 경매 시스템 ⚔️</h1>", unsafe_allow_html=True)
@@ -124,7 +130,7 @@ if st.session_state.phase == 'setup':
     col_empty1, col_form, col_empty2 = st.columns([1, 2, 1])
     with col_form:
         st.markdown("### 📝 드래프트 설정")
-        names_input = st.text_area("1. 소환사 명단 입력 (쉼표 구분)", "동후, 성규, 재원, 원빈, 호연, 민준, 선호, 태섭, 현일, 영동")
+        names_input = st.text_area("1. 소환사 명단 입력 (쉼표 구분)", "팀원1, 팀원2, 팀원3, 팀원4, 팀원5, 팀원6, 팀원7, 팀원8, 팀원9, 팀원10")
         
         if names_input:
             name_list = [n.strip() for n in names_input.split(",") if n.strip()]
@@ -158,35 +164,32 @@ else:
             with st.form("bid_form", clear_on_submit=True):
                 st.markdown("<p style='text-align:center;'>입찰 범위: 0 ~ 100 Gold</p>", unsafe_allow_html=True)
                 c1, c2 = st.columns(2)
-                
-                # 입력값이 비어있을 경우를 대비한 처리
-                b_a_raw = c1.text_input("🔵 블루팀 입찰", type="password", key="bid_a_input")
-                b_b_raw = c2.text_input("🔴 레드팀 입찰", type="password", key="bid_b_input")
+                b_a_raw = c1.text_input("🔵 블루팀 입찰", type="password")
+                b_b_raw = c2.text_input("🔴 레드팀 입찰", type="password")
                 
                 if st.form_submit_button("낙찰 확정"):
-                    try:
-                        # 숫자가 아닌 값이거나 비어있으면 0으로 처리
-                        val_a = int(b_a_raw) if b_a_raw.strip().isdigit() else 0
-                        val_b = int(b_b_raw) if b_b_raw.strip().isdigit() else 0
-                        handle_bid(val_a, val_b)
-                        st.rerun()
-                    except Exception as e:
-                        st.error(f"오류가 발생했습니다: {e}")
+                    val_a = int(b_a_raw) if b_a_raw.strip().isdigit() else 0
+                    val_b = int(b_b_raw) if b_b_raw.strip().isdigit() else 0
+                    handle_bid(val_a, val_b)
+                    st.rerun()
         else:
             st.markdown("<h2 style='text-align: center; color: #C89B3C;'>🏆 드래프트 완료! 🏆</h2>", unsafe_allow_html=True)
             st.markdown('<div class="swap-section">', unsafe_allow_html=True)
             st.markdown("#### 🔄 밸런스 조정: 트레이드 실행")
+            
             swap_cols = st.columns(2)
             options = { "1번째 픽": 1, "2번째 픽": 2, "3번째 픽": 3, "4번째 픽": 4 }
             line_1 = swap_cols[0].selectbox("첫 번째 교체 라인", list(options.keys()), index=1)
             line_2 = swap_cols[1].selectbox("두 번째 교체 라인", list(options.keys()), index=3)
             
-            if st.button("🔄 트레이드 실행"):
-                if line_1 == line_2:
-                    st.warning("서로 다른 라인을 선택하세요.")
-                else:
-                    execute_manual_swap(options[line_1], options[line_2])
-                    st.rerun()
+            # 버튼 클릭 전 중복 체크
+            if line_1 == line_2:
+                st.warning("동일한 라인을 선택했습니다. 서로 다른 라인을 선택해야 트레이드가 가능합니다.")
+            
+            if st.button("🔄 트레이드 실행", disabled=(line_1 == line_2)):
+                execute_manual_swap(options[line_1], options[line_2])
+                st.rerun()
+                
             st.markdown('</div>', unsafe_allow_html=True)
             if st.button("전체 초기화 (새 게임)"): st.session_state.clear(); st.rerun()
 
@@ -198,4 +201,3 @@ else:
             st.markdown(f'<div class="lol-card card-b">{icon} | {m}</div>', unsafe_allow_html=True)
         for _ in range(5 - len(st.session_state.team_b["members"])):
             st.markdown('<div class="lol-card card-empty">Empty</div>', unsafe_allow_html=True)
-
