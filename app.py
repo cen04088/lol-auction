@@ -194,10 +194,11 @@ else:
             if st.button("전체 초기화 (새 게임)"): st.session_state.clear(); st.rerun()
 
     with col_right:
-        st.markdown("### <span style='color:#E91E63'>RED TEAM 🔴</span>", unsafe_allow_html=True)
+        st.markdown("### <span style='color:#E91E63'>🔴 RED TEAM </span>", unsafe_allow_html=True)
         st.metric("GOLD", f"{st.session_state.team_b['points']} G")
         for i, m in enumerate(st.session_state.team_b["members"]):
             icon = "👑" if i == 0 else f"{i}픽"
             st.markdown(f'<div class="lol-card card-b">{icon} | {m}</div>', unsafe_allow_html=True)
         for _ in range(5 - len(st.session_state.team_b["members"])):
             st.markdown('<div class="lol-card card-empty">Empty</div>', unsafe_allow_html=True)
+
