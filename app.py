@@ -128,7 +128,7 @@ def execute_strategic_trade(line1_val, line2_val):
         st.error(f"트레이드 중 오류 발생: {e}")
 
 # --- 4. 메인 UI ---
-st.markdown("<h1 style='text-align: center;'>⚔️ 마법공학 내전 경매 시스템 ⚔️</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>⚔️ 롤 내전 경매 시스템 ⚔️</h1>", unsafe_allow_html=True)
 st.write("---")
 
 if st.session_state.phase == 'setup':
@@ -203,5 +203,6 @@ else:
             st.markdown(f'<div class="lol-card card-b">{icon} | {m}</div>', unsafe_allow_html=True)
         for _ in range(5 - len(st.session_state.team_b["members"])):
             st.markdown('<div class="lol-card card-empty">Empty Slot</div>', unsafe_allow_html=True)
+
 
 
