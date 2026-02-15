@@ -181,8 +181,8 @@ else:
             
             options = { "교환 없음": None, "1번 라인": 1, "2번 라인": 2, "3번 라인": 3, "4번 라인": 4 }
             c1, c2 = st.columns(2)
-            line1 = c1.selectbox("첫 번째 선택", list(options.keys()), index=0)
-            line2 = c2.selectbox("두 번째 선택", list(options.keys()), index=0)
+            line1 = c1.selectbox("블루팀 선택", list(options.keys()), index=0)
+            line2 = c2.selectbox("레드팀 선택", list(options.keys()), index=0)
             
             # 동일 라인 중복 선택 방지
             is_same = (options[line1] == options[line2] and options[line1] is not None)
@@ -203,4 +203,5 @@ else:
             st.markdown(f'<div class="lol-card card-b">{icon} | {m}</div>', unsafe_allow_html=True)
         for _ in range(5 - len(st.session_state.team_b["members"])):
             st.markdown('<div class="lol-card card-empty">Empty Slot</div>', unsafe_allow_html=True)
+
 
