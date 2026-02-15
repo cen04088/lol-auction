@@ -43,7 +43,7 @@ st.markdown("""
     }
     div.stButton > button:hover { background-color: #C89B3C !important; color: #1E2328 !important; box-shadow: 0 0 20px rgba(200, 155, 60, 0.6); }
     
-    /* 스왑 섹션 */
+    /* 스왑 섹션 스타일 */
     .swap-section {
         background-color: rgba(200, 155, 60, 0.05);
         border: 1px dashed #C89B3C;
@@ -92,11 +92,11 @@ def handle_bid(val_a, val_b):
     if val_a == val_b:
         tied_player = st.session_state.pool.pop(0)
         st.session_state.pool.append(tied_player)
-        st.session_state.last_msg = f"⚠️ 동점! {tied_player}님은 명단 맨 뒤로 이동합니다."
+        st.session_state.last_msg = f"⚠️ 동점({val_a}pt)! {tied_player}님은 명단 맨 뒤로 이동합니다."
         return
 
     if val_a > val_b:
-        winner = st.session_state.pool.pop(0)
+        winner = st.session_state.pop(0) if hasattr(st.session_state, 'pool') else st.session_state.pool.pop(0)
         st.session_state.team_a["members"].append(winner)
         st.session_state.team_a["points"] -= val_a
         st.session_state.last_msg = f"🔵 블루팀, {winner} 영입! ({val_a}pt)"
@@ -113,13 +113,15 @@ def handle_bid(val_a, val_b):
         st.session_state.pool = []
         st.session_state.phase = 'result'
 
-def execute_random_swap(line1, line2):
-    target_idx = random.choice([line1, line2])
-    p_a = st.session_state.team_a["members"][target_idx]
-    p_b = st.session_state.team_b["members"][target_idx]
-    st.session_state.team_a["members"][target_idx] = p_b
-    st.session_state.team_b["members"][target_idx] = p_a
-    st.success(f"🎲 {target_idx}번째 픽 라인이 스왑되었습니다! ({p_a} ↔ {p_b})")
+def execute_manual_swap(line1, line2):
+    # 선택된 두 라인 각각에 대해 스왑 실행
+    for target_idx in [line1, line2]:
+        p_a = st.session_state.team_a["members"][target_idx]
+        p_b = st.session_state.team_b["members"][target_idx]
+        st.session_state.team_a["members"][target_idx] = p_b
+        st.session_state.team_b["members"][target_idx] = p_a
+    
+    st.success(f"🔄 전략적 트레이드 완료: {line1}번째 및 {line2}번째 픽 라인이 교체되었습니다.")
 
 # --- 4. 메인 UI ---
 st.markdown("<h1 style='text-align: center;'>⚔️ 마법공학 내전 경매 시스템 ⚔️</h1>", unsafe_allow_html=True)
@@ -129,7 +131,7 @@ if st.session_state.phase == 'setup':
     col_empty1, col_form, col_empty2 = st.columns([1, 2, 1])
     with col_form:
         st.markdown("### 📝 드래프트 설정")
-        names_input = st.text_area("1. 소환사 명단 입력 (쉼표 구분)", "동후, 성규, 재원, 원빈, 호연, 민준, 영빈, 태섭, 현일, 영동")
+        names_input = st.text_area("1. 소환사 명단 입력 (쉼표 구분)", "팀원1, 팀원2, 팀원3, 팀원4, 팀원5, 팀원6, 팀원7, 팀원8, 팀원9, 팀원10")
         
         if names_input:
             name_list = [n.strip() for n in names_input.split(",") if n.strip()]
@@ -146,6 +148,7 @@ if st.session_state.phase == 'setup':
 else:
     col_left, col_mid, col_right = st.columns([1, 1.5, 1])
 
+    # [좌측: 블루팀]
     with col_left:
         st.markdown("### <span style='color:#0AC8B9'>🔵 BLUE TEAM</span>", unsafe_allow_html=True)
         st.metric("GOLD", f"{st.session_state.team_a['points']} G")
@@ -155,6 +158,7 @@ else:
         for _ in range(5 - len(st.session_state.team_a["members"])):
             st.markdown('<div class="lol-card card-empty">Empty</div>', unsafe_allow_html=True)
 
+    # [중앙: 경매 진행]
     with col_mid:
         if st.session_state.phase == 'auction':
             player = st.session_state.pool[0]
@@ -172,30 +176,30 @@ else:
                         st.rerun()
                     except ValueError: st.error("숫자만 입력 가능!")
         else:
-            # st.balloons() 제거됨
             st.markdown("<h2 style='text-align: center; color: #C89B3C;'>🏆 드래프트 완료! 🏆</h2>", unsafe_allow_html=True)
             
-            # 랜덤 스왑 섹션
+            # --- 전략적 트레이드 섹션 ---
             st.markdown('<div class="swap-section">', unsafe_allow_html=True)
-            st.markdown("#### 🔄 밸런스 조정: 랜덤 스왑 요청")
-            st.write("스왑을 희망하는 두 개의 픽 라인을 선택하세요. 랜덤으로 한 라인의 팀원이 교체됩니다.")
+            st.markdown("#### 🔄 밸런스 조정: 트레이드 실행")
+            st.write("교체할 두 개의 픽 라인을 선택하세요. 선택된 라인의 팀원들이 즉시 서로 맞교환됩니다.")
             
             swap_cols = st.columns(2)
             options = { "1번째 픽": 1, "2번째 픽": 2, "3번째 픽": 3, "4번째 픽": 4 }
-            line_1 = swap_cols[0].selectbox("첫 번째 후보 라인", list(options.keys()), index=1)
-            line_2 = swap_cols[1].selectbox("두 번째 후보 라인", list(options.keys()), index=3)
+            line_1 = swap_cols[0].selectbox("첫 번째 교체 라인", list(options.keys()), index=1)
+            line_2 = swap_cols[1].selectbox("두 번째 교체 라인", list(options.keys()), index=3)
             
-            if st.button("🎲 랜덤 스왑 실행 (운명의 주사위)"):
+            if st.button("🔄 선택한 라인 모두 트레이드 실행"):
                 if line_1 == line_2:
                     st.warning("서로 다른 라인을 선택해야 합니다.")
                 else:
-                    execute_random_swap(options[line_1], options[line_2])
+                    execute_manual_swap(options[line_1], options[line_2])
                     time.sleep(1)
                     st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
             
             if st.button("전체 초기화 (새 게임)"): st.session_state.clear(); st.rerun()
 
+    # [우측: 레드팀]
     with col_right:
         st.markdown("### <span style='color:#E91E63'>RED TEAM 🔴</span>", unsafe_allow_html=True)
         st.metric("GOLD", f"{st.session_state.team_b['points']} G")
