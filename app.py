@@ -177,7 +177,7 @@ else:
         else:
             st.markdown("<h2 style='text-align: center; color: #C89B3C;'>🏆 드래프트 완료! 🏆</h2>", unsafe_allow_html=True)
             st.markdown('<div class="swap-section">', unsafe_allow_html=True)
-            st.markdown("#### 🔄 전략적 트레이드")
+            st.markdown("#### 🔄 전략적 트레이드(골드가 많이 남은 팀이 트레이드 여부를 결정합니다")
             
             options = { "교환 없음": None, "1번 라인": 1, "2번 라인": 2, "3번 라인": 3, "4번 라인": 4 }
             c1, c2 = st.columns(2)
@@ -203,6 +203,7 @@ else:
             st.markdown(f'<div class="lol-card card-b">{icon} | {m}</div>', unsafe_allow_html=True)
         for _ in range(5 - len(st.session_state.team_b["members"])):
             st.markdown('<div class="lol-card card-empty">Empty Slot</div>', unsafe_allow_html=True)
+
 
 
 
