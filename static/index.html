@@ -351,8 +351,21 @@ function renderSetup(){
           <label>🎭 블러핑 모드</label>
           <select id="cfg-bluff">
             <option value="0">OFF</option>
-            <option value="1">ON (±3pt 왜곡)</option>
+            <option value="1">ON</option>
           </select>
+          <div style="font-size:.75em;color:#666;margin-top:4px;line-height:1.4">
+            낙찰 결과에 표시되는 금액이 실제와 ±3pt 다르게 보입니다. 진짜 금액으로 승패가 결정됩니다.
+          </div>
+        </div>
+        <div class="col">
+          <label>💥 더블다운</label>
+          <select id="cfg-dd">
+            <option value="1">ON</option>
+            <option value="0">OFF</option>
+          </select>
+          <div style="font-size:.75em;color:#666;margin-top:4px;line-height:1.4">
+            입찰 금액을 2배로 처리하는 특수 기술. 팀당 게임 전체에서 1회만 사용 가능합니다.
+          </div>
         </div>
       </div>
     </div>
@@ -433,6 +446,7 @@ function startGame(){
       tie:   A('cfg-tie').value,
       timer: parseInt(A('cfg-timer').value),
       bluff: A('cfg-bluff').value==='1',
+      dd:    A('cfg-dd').value==='1',
     }
   });
 }
@@ -488,7 +502,11 @@ function renderAuction(){
       &nbsp;&nbsp;
       <span style="color:#aaa">${pi} ${pinfo.position}</span>
     </div>
-    <div style="color:#555;font-size:.8em;margin-top:4px">남은 선수: ${pool.length}명</div>
+    <div style="margin-top:6px">
+      <span style="color:#888;font-size:.85em">남은 선수 </span>
+      <span style="color:#C89B3C;font-size:1em;font-weight:900">${pool.length}</span>
+      <span style="color:#888;font-size:.85em">명</span>
+    </div>
   </div>`;
 
   const lastMsg = gs.last_msg ?
@@ -631,10 +649,19 @@ function buildBidArea(){
 }
 
 function buildMyBidInput(team, pts){
-  const color   = team==='blue'?'#0AC8B9':'#E91E63';
-  const ddUsed  = team==='blue' ? gs.dd_a : gs.dd_b;
-  const myVal   = gs.my_val;
-  const myDd    = gs.my_dd;
+  const color     = team==='blue'?'#0AC8B9':'#E91E63';
+  const ddEnabled = gs.cfg?.dd !== false;
+  const ddUsed    = team==='blue' ? gs.dd_a : gs.dd_b;
+  const myVal     = gs.my_val;
+  const myDd      = gs.my_dd;
+  const ddHtml = ddEnabled ? `
+    <label style="margin-top:6px;display:flex;align-items:center;gap:6px;cursor:pointer">
+      <input type="checkbox" id="dd-chk" ${ddUsed?'disabled':''} ${myDd?'checked':''}
+        style="width:auto;margin:0">
+      <span style="color:${ddUsed?'#555':'#C89B3C'};font-size:.9em">
+        💥 더블다운 ${ddUsed?'(사용됨)':'사용!'}
+      </span>
+    </label>` : '';
   return `
   <div>
     <div style="color:${color};font-size:.85em;margin-bottom:4px">잔여: ${pts}G</div>
@@ -642,23 +669,7 @@ function buildMyBidInput(team, pts){
       style="color:${color};border-color:${color};text-align:center;font-size:1.1em"
       ${myVal!==undefined&&myVal!==null?`value="${myVal}"`:''}
     >
-    <label style="margin-top:6px;display:flex;align-items:center;gap:6px;cursor:pointer">
-      <input type="checkbox" id="dd-chk" ${ddUsed?'disabled':''} ${myDd?'checked':''}
-        style="width:auto;margin:0">
-      <span style="color:${ddUsed?'#555':'#C89B3C'};font-size:.9em">
-        💥 더블다운 ${ddUsed?'(사용됨)':'사용!'}
-      </span>
-      <span class="tip-wrap" onclick="this.classList.toggle('open')">
-        <span style="cursor:pointer;color:#888;font-size:.85em;border:1px solid #555;
-          border-radius:50%;width:17px;height:17px;display:inline-flex;
-          align-items:center;justify-content:center;flex-shrink:0">?</span>
-        <span class="tip-box">
-          입찰 금액 × 2로 처리됩니다.<br>
-          잔여 포인트 초과 시 자동 캡.<br>
-          팀당 게임 전체에서 <b>1회</b>만 사용 가능.
-        </span>
-      </span>
-    </label>
+    ${ddHtml}
     <button onclick="submitBid()" style="margin-top:8px;border-color:${color};color:${color}">
       ⚡ 입찰 확정
     </button>
@@ -718,9 +729,9 @@ function buildTeamPanel(team){
       <div class="val" style="color:${color}">${pts}G</div>
       ${spent>0?`<div style="font-size:.75em;color:#888">-${spent} 소모</div>`:''}
     </div>
-    <div style="font-size:.8em;color:${ddUsed?'#555':'#C89B3C'};text-align:center;margin-bottom:6px">
+    ${gs.cfg?.dd !== false ? `<div style="font-size:.8em;color:${ddUsed?'#555':'#C89B3C'};text-align:center;margin-bottom:6px">
       ${ddUsed?'💥 더블다운 사용됨':'💥 더블다운 대기 중'}
-    </div>
+    </div>` : ''}
     ${cards}
   </div>`;
 }

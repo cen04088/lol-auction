@@ -29,7 +29,7 @@ class Room:
             "all_players": {},
             "cfg": {
                 "sp": 100, "tie": "random",
-                "timer": 30, "bluff": False,
+                "timer": 30, "bluff": False, "dd": True,
             },
             "dd_a": False, "dd_b": False,
             "bid": {
@@ -133,10 +133,11 @@ class Room:
         pb = self.s["team_b"]["points"]
 
         # 더블다운
+        cfg_dd = self.s["cfg"].get("dd", True)
         aa, ua = va, False
         ab, ub = vb, False
-        if b["dd_a"] and not self.s["dd_a"]: aa, ua = min(va * 2, pa), True
-        if b["dd_b"] and not self.s["dd_b"]: ab, ub = min(vb * 2, pb), True
+        if cfg_dd and b["dd_a"] and not self.s["dd_a"]: aa, ua = min(va * 2, pa), True
+        if cfg_dd and b["dd_b"] and not self.s["dd_b"]: ab, ub = min(vb * 2, pb), True
         if ua: self.s["dd_a"] = True
         if ub: self.s["dd_b"] = True
 
@@ -236,6 +237,7 @@ class Room:
                     "tie":   cfg.get("tie", "random"),
                     "timer": int(cfg.get("timer", 30)),
                     "bluff": bool(cfg.get("bluff", False)),
+                    "dd":    bool(cfg.get("dd", True)),
                 },
             })
             await self._start_timer()
