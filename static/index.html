@@ -25,7 +25,7 @@ label{color:#C89B3C;font-size:.9em;font-weight:600;display:block;margin:6px 0 2p
 .blue{color:#0AC8B9}
 .red{color:#E91E63}
 .gold{color:#C89B3C}
-.gray{color:#666}
+.gray{color:#aaa}
 .tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.8em;font-weight:700}
 .tag-blue{border:1px solid #0AC8B9;color:#0AC8B9}
 .tag-red{border:1px solid #E91E63;color:#E91E63}
@@ -267,7 +267,7 @@ function renderLobby(){
   <h1>⚔️ 롤 내전 경매 시스템</h1>
   <div style="max-width:480px;margin:0 auto">
     <div class="card" style="text-align:center">
-      <div style="font-size:.9em;color:#888;margin-bottom:4px">방 코드</div>
+      <div style="font-size:.9em;color:#aaa;margin-bottom:4px">방 코드</div>
       <div class="room-code" onclick="copyCode('${gs.room_id}')"
         style="cursor:pointer;user-select:none" title="클릭하여 복사">
         ${gs.room_id}
@@ -276,7 +276,7 @@ function renderLobby(){
         style="width:auto;padding:6px 20px;font-size:.85em;margin-top:6px;border-color:#555;color:#888">
         📋 코드 복사
       </button>
-      <div style="font-size:.82em;color:#666;margin-top:6px">이 코드를 다른 팀원에게 공유하세요</div>
+      <div style="font-size:.82em;color:#aaa;margin-top:6px">이 코드를 다른 팀원에게 공유하세요</div>
     </div>
     <div class="card">
       <h3>접속 현황</h3>
@@ -353,7 +353,7 @@ function renderSetup(){
             <option value="0">OFF</option>
             <option value="1">ON</option>
           </select>
-          <div style="font-size:.75em;color:#666;margin-top:4px;line-height:1.4">
+          <div style="font-size:.75em;color:#bbb;margin-top:4px;line-height:1.4">
             낙찰 결과에 표시되는 금액이 실제와 ±3pt 다르게 보입니다. 진짜 금액으로 승패가 결정됩니다.
           </div>
         </div>
@@ -363,7 +363,7 @@ function renderSetup(){
             <option value="1">ON</option>
             <option value="0">OFF</option>
           </select>
-          <div style="font-size:.75em;color:#666;margin-top:4px;line-height:1.4">
+          <div style="font-size:.75em;color:#bbb;margin-top:4px;line-height:1.4">
             입찰 금액을 2배로 처리하는 특수 기술. 팀당 게임 전체에서 1회만 사용 가능합니다.
           </div>
         </div>
@@ -390,7 +390,7 @@ function renderSetup(){
       </div>
     </div>
     <div class="card">
-      <div id="setup-status" style="color:#888;font-size:.9em;margin-bottom:6px">
+      <div id="setup-status" style="color:#aaa;font-size:.9em;margin-bottom:6px">
         소환사명을 10명 입력하면 팀장 선택이 활성화됩니다.
       </div>
       <button id="start-btn" onclick="startGame()" disabled>🚀 드래프트 시작 (LOCK IN)</button>
@@ -457,8 +457,8 @@ function renderWaiting(){
   <h1>⚔️ 롤 내전 경매 시스템</h1>
   <div style="max-width:400px;margin:60px auto;text-align:center" class="card">
     <div style="font-size:2em;margin-bottom:12px">⏳</div>
-    <div style="color:#888">블루팀 팀장이 드래프트를 설정 중입니다...</div>
-    <div style="color:#555;font-size:.85em;margin-top:8px">방 코드: <b style="color:#C89B3C">${myRoom}</b></div>
+    <div style="color:#ccc">블루팀 팀장이 드래프트를 설정 중입니다...</div>
+    <div style="color:#aaa;font-size:.85em;margin-top:8px">방 코드: <b style="color:#C89B3C">${myRoom}</b></div>
   </div>`;
 }
 
@@ -495,7 +495,7 @@ function renderAuction(){
   const pi = POS_ICON[pinfo.position]||'❓';
   const targetHtml=`
   <div class="target-box">
-    <div style="font-size:.8em;color:#888;margin-bottom:4px">NEXT CHAMPION</div>
+    <div style="font-size:.8em;color:#aaa;margin-bottom:4px">NEXT CHAMPION</div>
     <div class="target-name">${player}</div>
     <div style="margin-top:6px">
       <span style="color:${tc};font-weight:700">${pinfo.tier}</span>
@@ -503,14 +503,14 @@ function renderAuction(){
       <span style="color:#aaa">${pi} ${pinfo.position}</span>
     </div>
     <div style="margin-top:6px">
-      <span style="color:#888;font-size:.85em">남은 선수 </span>
+      <span style="color:#aaa;font-size:.85em">남은 선수 </span>
       <span style="color:#C89B3C;font-size:1em;font-weight:900">${pool.length}</span>
-      <span style="color:#888;font-size:.85em">명</span>
+      <span style="color:#aaa;font-size:.85em">명</span>
     </div>
   </div>`;
 
   const lastMsg = gs.last_msg ?
-    `<div style="text-align:center;color:#666;font-size:.82em;margin:4px 0">최근: ${gs.last_msg}</div>` : '';
+    `<div style="text-align:center;color:#aaa;font-size:.82em;margin:4px 0">최근: ${gs.last_msg}</div>` : '';
 
   // 입찰 영역 (역할별)
   const bidHtml = buildBidArea();
@@ -520,7 +520,7 @@ function renderAuction(){
     <div class="hist-item hist-${h.type}">${h.result}</div>`).join('');
   const histHtml = hist ? `
   <details id="det-hist" style="margin-top:8px">
-    <summary style="color:#888;font-size:.85em;cursor:pointer">📋 기록 (${(gs.history||[]).length}건)</summary>
+    <summary style="color:#aaa;font-size:.85em;cursor:pointer">📋 기록 (${(gs.history||[]).length}건)</summary>
     <div style="margin-top:4px;max-height:200px;overflow-y:auto">${hist}</div>
   </details>` : '';
 
@@ -577,7 +577,7 @@ function buildBidArea(){
       : winner==='tie' ? '' : 'opacity:.65';
     return `
     <div class="bid-area" style="border-color:#C89B3C">
-      <div style="text-align:center;color:#888;font-size:.85em;margin-bottom:8px">📢 낙찰 결과</div>
+      <div style="text-align:center;color:#aaa;font-size:.85em;margin-bottom:8px">📢 낙찰 결과</div>
       <div class="row" style="align-items:center">
         <div class="bid-reveal blue" style="animation:slide-left .3s ease;${aExtra}">
           🔵 ${dda?'💥':''}${va}pt${winner==='blue'?' 👑':''}
@@ -727,7 +727,7 @@ function buildTeamPanel(team){
     <div class="metric">
       <div class="lbl">GOLD</div>
       <div class="val" style="color:${color}">${pts}G</div>
-      ${spent>0?`<div style="font-size:.75em;color:#888">-${spent} 소모</div>`:''}
+      ${spent>0?`<div style="font-size:.75em;color:#aaa">-${spent} 소모</div>`:''}
     </div>
     ${gs.cfg?.dd !== false ? `<div style="font-size:.8em;color:${ddUsed?'#555':'#C89B3C'};text-align:center;margin-bottom:6px">
       ${ddUsed?'💥 더블다운 사용됨':'💥 더블다운 대기 중'}
@@ -754,7 +754,7 @@ function renderResult(){
       : `🔵 ${selA.length}명 선택 ↔ 🔴 ${selB.length}명 선택  (수를 맞춰주세요)`;
     tradeCenter=`
     <div class="trade-status" style="border-color:${bcolor};color:${bcolor}">${txt}</div>
-    <div style="color:#888;font-size:.82em;text-align:center;margin-bottom:8px">
+    <div style="color:#aaa;font-size:.82em;text-align:center;margin-bottom:8px">
       양 팀 선수 카드를 클릭해 선택하세요
     </div>
     <button onclick="send('trade_confirm')" ${canSwap?'':'disabled'} style="margin-bottom:6px">
@@ -787,7 +787,7 @@ function renderResult(){
         <div class="card">${tradeCenter}</div>
         ${hist?`
         <details class="card">
-          <summary style="cursor:pointer;color:#888;font-size:.85em">📋 전체 경매 기록</summary>
+          <summary style="cursor:pointer;color:#aaa;font-size:.85em">📋 전체 경매 기록</summary>
           <div style="margin-top:8px">${hist}</div>
         </details>`:''}
       </div>
@@ -840,7 +840,7 @@ function buildResultTeam(team, tradeMode){
     <div class="metric">
       <div class="lbl">최종 GOLD</div>
       <div class="val" style="color:${color}">${pts}G</div>
-      ${spent>0?`<div style="font-size:.75em;color:#888">-${spent} 소모</div>`:''}
+      ${spent>0?`<div style="font-size:.75em;color:#aaa">-${spent} 소모</div>`:''}
     </div>
     ${cards}
   </div>`;
