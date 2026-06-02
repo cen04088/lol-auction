@@ -1,2 +1,2 @@
-streamlit
-pandas
+fastapi
+uvicorn[standard]

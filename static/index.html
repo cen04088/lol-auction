@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>⚔️ 롤 내전 경매</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',sans-serif;background:linear-gradient(180deg,#091428,#0A0A0C);
+  color:#C89B3C;min-height:100vh;padding:10px}
+h1{text-align:center;padding:16px 0 8px;font-size:1.6em;text-shadow:0 0 10px rgba(200,155,60,.5)}
+h2{color:#C89B3C;margin-bottom:12px;font-size:1.2em}
+h3{color:#C89B3C;margin-bottom:8px;font-size:1em}
+button{background:#1E2328;color:#C89B3C;border:2px solid #C89B3C;padding:10px 18px;
+  border-radius:6px;font-size:.95em;font-weight:700;cursor:pointer;transition:.2s;width:100%;margin:3px 0}
+button:hover{background:#C89B3C;color:#1E2328}
+button:disabled{opacity:.4;cursor:not-allowed;background:#1E2328;color:#555;border-color:#555}
+input,select{background:#0d1b2a;color:#C89B3C;border:1px solid #C89B3C;padding:8px 12px;
+  border-radius:5px;font-size:.95em;width:100%;margin:3px 0}
+input::placeholder{color:#555}
+label{color:#C89B3C;font-size:.9em;font-weight:600;display:block;margin:6px 0 2px}
+.card{background:rgba(1,10,19,.8);border:1px solid #C89B3C;border-radius:10px;padding:16px;margin:8px 0}
+.row{display:flex;gap:8px}
+.col{flex:1}
+.blue{color:#0AC8B9}
+.red{color:#E91E63}
+.gold{color:#C89B3C}
+.gray{color:#666}
+.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.8em;font-weight:700}
+.tag-blue{border:1px solid #0AC8B9;color:#0AC8B9}
+.tag-red{border:1px solid #E91E63;color:#E91E63}
+.tag-gold{border:1px solid #C89B3C;color:#C89B3C}
+.tag-gray{border:1px solid #555;color:#555}
+/* Player card */
+.pcard{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;border-radius:5px;margin:4px 0;font-weight:700;font-size:.88em}
+.pcard-a{border:2px solid #0AC8B9;background:rgba(10,200,185,.08);color:#0AC8B9}
+.pcard-b{border:2px solid #E91E63;background:rgba(233,30,99,.08);color:#E91E63}
+.pcard-empty{border:1px dashed #333;color:#444;justify-content:center;font-style:italic}
+.pcard-sel{border:2px solid #C89B3C!important;background:rgba(200,155,60,.15)!important;cursor:pointer}
+.pcard button{width:auto;padding:2px 8px;font-size:.8em;margin:0 0 0 6px}
+/* Timer */
+.timer-box{border-radius:8px;padding:12px;text-align:center;margin-bottom:10px;border:2px solid #00C060}
+.timer-num{font-size:2.2em;font-weight:900}
+.timer-bar{background:#333;border-radius:3px;height:6px;margin-top:6px}
+.timer-fill{height:100%;border-radius:3px;transition:width .5s,background .5s}
+/* Auction target */
+.target-box{background:radial-gradient(circle,rgba(200,155,60,.12),transparent 70%);
+  padding:16px;text-align:center;border-bottom:2px solid #C89B3C;margin-bottom:10px}
+.target-name{font-size:2.4em;font-weight:900;color:#C89B3C;text-shadow:0 0 20px rgba(200,155,60,.7)}
+/* Bid area */
+.bid-area{background:rgba(1,10,19,.8);border:1px solid #C89B3C;border-radius:10px;padding:14px;margin:8px 0}
+.bid-status{text-align:center;padding:12px;border-radius:8px;margin:4px 0;font-weight:700;font-size:1em}
+.bid-waiting{border:1px dashed #555;color:#777}
+.bid-done{border:1px solid #00C060;color:#00C060;background:rgba(0,192,96,.07)}
+.bid-reveal{font-size:1.4em;padding:14px;border-radius:8px;text-align:center;
+  border:2px solid #C89B3C;background:rgba(200,155,60,.1);margin:6px 0;animation:pop .3s ease}
+@keyframes pop{from{transform:scale(.95);opacity:.6}to{transform:scale(1);opacity:1}}
+/* History */
+.hist-item{padding:5px 10px;border-radius:4px;margin:3px 0;font-size:.82em;font-weight:600;border-left:3px solid}
+.hist-blue{border-color:#0AC8B9;background:rgba(10,200,185,.06)}
+.hist-red{border-color:#E91E63;background:rgba(233,30,99,.06)}
+.hist-tie{border-color:#C89B3C;background:rgba(200,155,60,.06)}
+/* Trade status */
+.trade-status{text-align:center;padding:12px;border-radius:8px;border:2px solid #C89B3C;
+  margin:8px 0;font-weight:700}
+/* Room code display */
+.room-code{font-size:2.8em;font-weight:900;letter-spacing:6px;text-align:center;
+  padding:16px;border:2px solid #C89B3C;border-radius:10px;color:#C89B3C;
+  text-shadow:0 0 15px rgba(200,155,60,.6);margin:10px 0}
+/* Roles */
+.role-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+/* Setup table */
+table{width:100%;border-collapse:collapse;font-size:.85em}
+th{background:#0d1b2a;color:#C89B3C;padding:8px;text-align:left;border:1px solid #C89B3C33}
+td{padding:4px 6px;border:1px solid #C89B3C22}
+td input,td select{margin:0;padding:5px 8px;font-size:.85em}
+/* Grid layout for auction */
+.auction-grid{display:grid;grid-template-columns:1fr 1.6fr 1fr;gap:10px}
+@media(max-width:700px){.auction-grid{grid-template-columns:1fr}}
+.section-title{font-size:.95em;font-weight:700;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #C89B3C44}
+.metric{background:rgba(1,10,19,.9);border:1px solid #C89B3C;border-radius:6px;
+  padding:8px 12px;margin-bottom:8px;text-align:center}
+.metric .val{font-size:1.3em;font-weight:900}
+.metric .lbl{font-size:.75em;color:#888}
+</style>
+</head>
+<body>
+<div id="app"><!-- JS renders here --></div>
+<script>
+const TIERS=['언랭','아이언','브론즈','실버','골드','플래티넘','에메랄드','다이아','마스터','그랜드마스터','챌린저'];
+const POSITIONS=['미정','탑','정글','미드','원딜','서폿'];
+const POS_ICON={미정:'❓',탑:'🛡️',정글:'🌿',미드:'⚡',원딜:'🏹',서폿:'💙'};
+const TIER_COLOR={언랭:'#888',아이언:'#8B6355',브론즈:'#AD5600',실버:'#A0A9B8',골드:'#C89B3C',
+  플래티넘:'#00B4A0',에메랄드:'#00C060',다이아:'#576BCE',마스터:'#9D4DC3',그랜드마스터:'#CF3F3F',챌린저:'#F4C874'};
+
+let ws=null, myRole=null, myRoom=null, gs=null;
+
+const A = id => document.getElementById(id);
+function send(type,data={}){
+  if(ws && ws.readyState===1) ws.send(JSON.stringify({type,...data}));
+}
+
+// ── 연결 ──────────────────────────────────────────────────────────────────
+async function createRoom(){
+  const r = await fetch('/api/room',{method:'POST'}).then(r=>r.json());
+  myRoom = r.room_id; myRole = 'blue';
+  connect();
+}
+
+function joinRoom(){
+  const code = (A('code-in').value||'').trim().toUpperCase();
+  const role = A('role-sel').value;
+  if(!code || !role){ alert('방 코드와 역할을 선택해주세요.'); return; }
+  myRoom = code; myRole = role;
+  connect();
+}
+
+function connect(){
+  const proto = location.protocol==='https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws/${myRoom}/${myRole}`);
+  ws.onmessage = e => {
+    const msg = JSON.parse(e.data);
+    if(msg.type==='state'){ gs=msg.d; myRole=msg.role; render(); }
+    else if(msg.type==='error'){ alert(msg.msg); ws=null; gs=null; renderHome(); }
+  };
+  ws.onclose = () => { if(gs){ gs=null; renderHome(); } };
+  ws.onerror = () => { alert('연결 실패'); ws=null; gs=null; renderHome(); };
+}
+
+// ── 렌더 라우팅 ───────────────────────────────────────────────────────────
+function render(){
+  if(!gs){ renderHome(); return; }
+  const ph = gs.phase;
+  if(ph==='lobby') renderLobby();
+  else if(ph==='setup') { if(myRole==='blue') renderSetup(); else renderWaiting(); }
+  else if(ph==='auction') renderAuction();
+  else if(ph==='result') renderResult();
+}
+
+// ── 홈 ────────────────────────────────────────────────────────────────────
+function renderHome(){
+  document.getElementById('app').innerHTML=`
+  <h1>⚔️ 롤 내전 경매 시스템</h1>
+  <div style="max-width:420px;margin:0 auto">
+    <div class="card">
+      <button onclick="createRoom()">🏠 새 방 만들기 (블루팀 팀장)</button>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:8px">기존 방 참가</h3>
+      <label>방 코드</label>
+      <input id="code-in" placeholder="예: AB3K7P" maxlength="6"
+        style="text-transform:uppercase;letter-spacing:4px;font-size:1.2em;text-align:center">
+      <label style="margin-top:10px">역할 선택</label>
+      <select id="role-sel">
+        <option value="">-- 선택 --</option>
+        <option value="red">🔴 레드팀 팀장</option>
+        <option value="spectator">👁️ 관전자</option>
+      </select>
+      <button onclick="joinRoom()" style="margin-top:8px">참가하기</button>
+    </div>
+  </div>`;
+}
+
+// ── 로비 ──────────────────────────────────────────────────────────────────
+function renderLobby(){
+  const conn = gs.connected || [];
+  const hasBlue = conn.includes('blue');
+  const hasRed  = conn.includes('red');
+  const dot = (c,txt) => `<div style="margin:6px 0">
+    <span class="role-dot" style="background:${c}"></span>
+    <span style="color:${c}">${txt}</span>
+  </div>`;
+
+  const canStart = myRole==='blue' && hasBlue && hasRed;
+  document.getElementById('app').innerHTML=`
+  <h1>⚔️ 롤 내전 경매 시스템</h1>
+  <div style="max-width:480px;margin:0 auto">
+    <div class="card" style="text-align:center">
+      <div style="font-size:.9em;color:#888;margin-bottom:4px">방 코드</div>
+      <div class="room-code">${gs.room_id}</div>
+      <div style="font-size:.85em;color:#888">이 코드를 다른 팀원에게 공유하세요</div>
+    </div>
+    <div class="card">
+      <h3>접속 현황</h3>
+      ${dot('#0AC8B9', '🔵 블루팀 팀장 ' + (hasBlue?'✅ 접속됨':'⏳ 대기 중'))}
+      ${dot('#E91E63', '🔴 레드팀 팀장 ' + (hasRed ?'✅ 접속됨':'⏳ 대기 중'))}
+      ${conn.filter(r=>r==='spectator').length > 0 ? dot('#888','👁️ 관전자 접속됨') : ''}
+    </div>
+    ${canStart ? `
+    <div class="card">
+      <button onclick="goToSetup()" style="font-size:1.1em">🚀 드래프트 설정 시작</button>
+    </div>` : myRole==='blue' ? `
+    <div class="card" style="text-align:center;color:#888">
+      레드팀 팀장 접속 대기 중...
+    </div>` : `
+    <div class="card" style="text-align:center;color:#888">
+      블루팀 팀장이 설정을 시작할 때까지 대기...
+    </div>`}
+  </div>`;
+}
+
+function goToSetup(){
+  // phase를 setup으로 전환 (블루팀 팀장만)
+  document.getElementById('app').innerHTML='';
+  renderSetup();
+}
+
+// ── 설정 ──────────────────────────────────────────────────────────────────
+function renderSetup(){
+  const tOpts = TIERS.map(t=>`<option>${t}</option>`).join('');
+  const pOpts = POSITIONS.map(p=>`<option>${p}</option>`).join('');
+  let rows='';
+  for(let i=0;i<10;i++){
+    rows+=`<tr>
+      <td><span style="color:#888;font-size:.8em">${i+1}</span></td>
+      <td><input id="pn${i}" placeholder="소환사명"></td>
+      <td><select id="pt${i}">${tOpts}</select></td>
+      <td><select id="pp${i}">${pOpts}</select></td>
+    </tr>`;
+  }
+  document.getElementById('app').innerHTML=`
+  <h1>⚔️ 드래프트 설정</h1>
+  <div style="max-width:800px;margin:0 auto">
+    <div class="card">
+      <h3>⚙️ 게임 설정</h3>
+      <div class="row">
+        <div class="col">
+          <label>💰 시작 포인트</label>
+          <select id="cfg-sp">
+            ${[50,70,100,120,150,200].map(v=>`<option ${v===100?'selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="col">
+          <label>⚔️ 동점 처리</label>
+          <select id="cfg-tie">
+            <option value="random">랜덤 결정</option>
+            <option value="reshuffle">뒤로 이동</option>
+          </select>
+        </div>
+        <div class="col">
+          <label>⏱️ 타이머 (초)</label>
+          <select id="cfg-timer">
+            ${[10,15,20,30,45,60].map(v=>`<option ${v===30?'selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="col">
+          <label>🎭 블러핑 모드</label>
+          <select id="cfg-bluff">
+            <option value="0">OFF</option>
+            <option value="1">ON (±3pt 왜곡)</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>👥 선수 등록 (10명)</h3>
+      <table>
+        <thead><tr><th>#</th><th>소환사명</th><th>티어</th><th>포지션</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div class="card" id="leader-area" style="display:none">
+      <h3>🏆 팀장 선택</h3>
+      <div class="row">
+        <div class="col">
+          <label>🔵 블루팀 팀장</label>
+          <select id="la"></select>
+        </div>
+        <div class="col">
+          <label>🔴 레드팀 팀장</label>
+          <select id="lb"></select>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div id="setup-status" style="color:#888;font-size:.9em;margin-bottom:6px">
+        소환사명을 10명 입력하면 팀장 선택이 활성화됩니다.
+      </div>
+      <button id="start-btn" onclick="startGame()" disabled>🚀 드래프트 시작 (LOCK IN)</button>
+    </div>
+  </div>`;
+
+  // 이름 입력 감시
+  for(let i=0;i<10;i++){
+    A(`pn${i}`).addEventListener('input', updateLeaders);
+  }
+}
+
+function updateLeaders(){
+  const names = [];
+  for(let i=0;i<10;i++){
+    const n=(A(`pn${i}`).value||'').trim();
+    if(n) names.push(n);
+  }
+  const dup = names.length !== new Set(names).size;
+  const ok  = names.length===10 && !dup;
+
+  A('setup-status').textContent = dup ? '⚠️ 중복된 소환사명이 있습니다.' :
+    `${names.length}/10명 입력됨`;
+
+  if(ok){
+    A('leader-area').style.display='block';
+    const laEl=A('la'), lbEl=A('lb');
+    const prev_a=laEl.value, prev_b=lbEl.value;
+    laEl.innerHTML = names.map(n=>`<option>${n}</option>`).join('');
+    lbEl.innerHTML = names.map(n=>`<option>${n}</option>`).join('');
+    if(names.includes(prev_a)) laEl.value=prev_a;
+    if(names.includes(prev_b)) lbEl.value=prev_b;
+    A('start-btn').disabled=false;
+  } else {
+    A('leader-area').style.display='none';
+    A('start-btn').disabled=true;
+  }
+}
+
+function startGame(){
+  const players=[];
+  for(let i=0;i<10;i++){
+    const n=(A(`pn${i}`).value||'').trim();
+    if(!n) return;
+    players.push({name:n, tier:A(`pt${i}`).value, position:A(`pp${i}`).value});
+  }
+  const la=A('la').value, lb=A('lb').value;
+  if(la===lb){ alert('팀장이 같습니다.'); return; }
+  send('start_game',{
+    players, leader_a:la, leader_b:lb,
+    cfg:{
+      sp:    parseInt(A('cfg-sp').value),
+      tie:   A('cfg-tie').value,
+      timer: parseInt(A('cfg-timer').value),
+      bluff: A('cfg-bluff').value==='1',
+    }
+  });
+}
+
+// ── 대기 화면 (레드/관전) ─────────────────────────────────────────────────
+function renderWaiting(){
+  document.getElementById('app').innerHTML=`
+  <h1>⚔️ 롤 내전 경매 시스템</h1>
+  <div style="max-width:400px;margin:60px auto;text-align:center" class="card">
+    <div style="font-size:2em;margin-bottom:12px">⏳</div>
+    <div style="color:#888">블루팀 팀장이 드래프트를 설정 중입니다...</div>
+    <div style="color:#555;font-size:.85em;margin-top:8px">방 코드: <b style="color:#C89B3C">${myRoom}</b></div>
+  </div>`;
+}
+
+// ── 경매 ──────────────────────────────────────────────────────────────────
+function renderAuction(){
+  const sp   = gs.cfg?.sp || 100;
+  const pool = gs.pool || [];
+  if(!pool.length){ renderResult(); return; }
+
+  const player   = pool[0];
+  const pinfo    = (gs.all_players||{})[player] || {tier:'언랭',position:'미정'};
+  const rem      = gs.timer ?? gs.cfg?.timer ?? 30;
+  const maxTimer = gs.cfg?.timer || 30;
+  const pct      = Math.round(100*rem/maxTimer);
+  const tcolor   = rem > maxTimer*.5 ? '#00C060' : rem > maxTimer*.2 ? '#C89B3C' : '#CF3F3F';
+
+  const timerHtml=`
+  <div class="timer-box" style="border-color:${tcolor}">
+    <div class="timer-num" style="color:${tcolor}">⏱️ ${rem}s</div>
+    <div class="timer-bar">
+      <div class="timer-fill" style="width:${pct}%;background:${tcolor}"></div>
+    </div>
+  </div>`;
+
+  const tc = TIER_COLOR[pinfo.tier]||'#888';
+  const pi = POS_ICON[pinfo.position]||'❓';
+  const targetHtml=`
+  <div class="target-box">
+    <div style="font-size:.8em;color:#888;margin-bottom:4px">NEXT CHAMPION</div>
+    <div class="target-name">${player}</div>
+    <div style="margin-top:6px">
+      <span style="color:${tc};font-weight:700">${pinfo.tier}</span>
+      &nbsp;&nbsp;
+      <span style="color:#aaa">${pi} ${pinfo.position}</span>
+    </div>
+    <div style="color:#555;font-size:.8em;margin-top:4px">남은 선수: ${pool.length}명</div>
+  </div>`;
+
+  const lastMsg = gs.last_msg ?
+    `<div style="text-align:center;color:#666;font-size:.82em;margin:4px 0">최근: ${gs.last_msg}</div>` : '';
+
+  // 입찰 영역 (역할별)
+  const bidHtml = buildBidArea();
+
+  // 히스토리
+  const hist = (gs.history||[]).slice().reverse().slice(0,5).map(h=>`
+    <div class="hist-item hist-${h.type}">${h.result}</div>`).join('');
+  const histHtml = hist ? `
+  <details style="margin-top:8px">
+    <summary style="color:#888;font-size:.85em;cursor:pointer">📋 기록 (${(gs.history||[]).length}건)</summary>
+    <div style="margin-top:4px">${hist}</div>
+  </details>` : '';
+
+  // 팀 패널
+  const teamA = buildTeamPanel('a');
+  const teamB = buildTeamPanel('b');
+
+  document.getElementById('app').innerHTML=`
+  <h1>⚔️ 롤 내전 경매</h1>
+  <div style="text-align:center;margin-bottom:6px;font-size:.8em;color:#555">
+    방 코드: <b style="color:#C89B3C">${myRoom}</b>
+    &nbsp;|&nbsp;
+    <span style="color:${myRole==='blue'?'#0AC8B9':'#E91E63'}">
+      ${myRole==='blue'?'🔵 블루팀 팀장':myRole==='red'?'🔴 레드팀 팀장':'👁️ 관전'}
+    </span>
+  </div>
+  <div class="auction-grid">
+    ${teamA}
+    <div>
+      ${timerHtml}${targetHtml}${lastMsg}${bidHtml}${histHtml}
+    </div>
+    ${teamB}
+  </div>`;
+}
+
+function buildBidArea(){
+  const reveal = gs.reveal;
+  const sp     = gs.cfg?.sp || 100;
+  const pa     = gs.team_a?.points ?? sp;
+  const pb     = gs.team_b?.points ?? sp;
+
+  // 양쪽 모두 제출 후 공개 순간
+  if(reveal){
+    const va  = gs.bid_a_val ?? 0;
+    const vb  = gs.bid_b_val ?? 0;
+    const dda = gs.bid_dd_a;
+    const ddb = gs.bid_dd_b;
+    return `
+    <div class="bid-area" style="border-color:#C89B3C">
+      <div style="text-align:center;color:#888;font-size:.85em;margin-bottom:8px">📢 낙찰 결과</div>
+      <div class="row">
+        <div class="bid-reveal blue">🔵 ${dda?'💥':''}${va}pt</div>
+        <div style="display:flex;align-items:center;padding:0 6px;color:#888">vs</div>
+        <div class="bid-reveal red">🔴 ${ddb?'💥':''}${vb}pt</div>
+      </div>
+    </div>`;
+  }
+
+  const aDone = gs.bid_a_done;
+  const bDone = gs.bid_b_done;
+
+  if(myRole==='blue'){
+    return `
+    <div class="bid-area">
+      <div class="row" style="margin-bottom:8px">
+        <div class="col">
+          ${aDone
+            ? `<div class="bid-status bid-done">✅ 내 입찰 완료</div>`
+            : buildMyBidInput('blue', pa)}
+        </div>
+        <div class="col" style="display:flex;align-items:center">
+          <div class="bid-status ${bDone?'bid-done':'bid-waiting'}" style="width:100%;text-align:center">
+            ${bDone?'✅ 레드팀 완료':'⏳ 레드팀 대기 중'}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  if(myRole==='red'){
+    return `
+    <div class="bid-area">
+      <div class="row" style="margin-bottom:8px">
+        <div class="col" style="display:flex;align-items:center">
+          <div class="bid-status ${aDone?'bid-done':'bid-waiting'}" style="width:100%;text-align:center">
+            ${aDone?'✅ 블루팀 완료':'⏳ 블루팀 대기 중'}
+          </div>
+        </div>
+        <div class="col">
+          ${bDone
+            ? `<div class="bid-status bid-done">✅ 내 입찰 완료</div>`
+            : buildMyBidInput('red', pb)}
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // spectator
+  return `
+  <div class="bid-area">
+    <div class="row">
+      <div class="col">
+        <div class="bid-status ${aDone?'bid-done':'bid-waiting'}">
+          ${aDone?'✅ 블루팀 입찰 완료':'⏳ 블루팀 대기 중'}
+        </div>
+      </div>
+      <div class="col">
+        <div class="bid-status ${bDone?'bid-done':'bid-waiting'}">
+          ${bDone?'✅ 레드팀 입찰 완료':'⏳ 레드팀 대기 중'}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function buildMyBidInput(team, pts){
+  const color   = team==='blue'?'#0AC8B9':'#E91E63';
+  const ddUsed  = team==='blue' ? gs.dd_a : gs.dd_b;
+  const myVal   = gs.my_val;
+  const myDd    = gs.my_dd;
+  return `
+  <div>
+    <div style="color:${color};font-size:.85em;margin-bottom:4px">잔여: ${pts}G</div>
+    <input id="bid-input" type="number" min="1" max="${pts}" placeholder="1 ~ ${pts}"
+      style="color:${color};border-color:${color};text-align:center;font-size:1.1em"
+      ${myVal!==undefined&&myVal!==null?`value="${myVal}"`:''}
+    >
+    <label style="margin-top:6px;display:flex;align-items:center;gap:6px;cursor:pointer">
+      <input type="checkbox" id="dd-chk" ${ddUsed?'disabled':''} ${myDd?'checked':''}
+        style="width:auto;margin:0">
+      <span style="color:${ddUsed?'#555':'#C89B3C'};font-size:.9em">
+        💥 더블다운 ${ddUsed?'(사용됨)':'사용!'}
+      </span>
+    </label>
+    <button onclick="submitBid()" style="margin-top:8px;border-color:${color};color:${color}">
+      ⚡ 입찰 확정
+    </button>
+  </div>`;
+}
+
+function submitBid(){
+  const input = A('bid-input');
+  const dd    = A('dd-chk');
+  if(!input) return;
+  const amt = parseInt(input.value);
+  if(isNaN(amt) || amt<0){ alert('올바른 숫자를 입력하세요.'); return; }
+  send('submit_bid',{amount:amt, use_dd: dd ? dd.checked : false});
+}
+
+function buildTeamPanel(team){
+  const t       = team==='a' ? gs.team_a : gs.team_b;
+  const color   = team==='a' ? '#0AC8B9' : '#E91E63';
+  const name    = team==='a' ? '🔵 BLUE TEAM' : '🔴 RED TEAM';
+  const cls     = team==='a' ? 'pcard-a' : 'pcard-b';
+  const sp      = gs.cfg?.sp || 100;
+  const pts     = t?.points ?? sp;
+  const spent   = sp - pts;
+  const members = t?.members || [];
+  const ddUsed  = team==='a' ? gs.dd_a : gs.dd_b;
+
+  let cards='';
+  for(let i=0;i<5;i++){
+    if(i<members.length){
+      const m = members[i];
+      const d = (gs.all_players||{})[m]||{tier:'언랭',position:'미정'};
+      const tc= TIER_COLOR[d.tier]||'#888';
+      const pi= POS_ICON[d.position]||'❓';
+      const icon = i===0?'👑':String(i);
+      cards+=`<div class="pcard ${cls}">
+        <span style="min-width:24px">${icon}</span>
+        <span style="flex:1;margin:0 6px">${m}</span>
+        <span style="color:${tc};font-size:.78em;margin-right:4px">${d.tier}</span>
+        <span style="font-size:.8em;color:#aaa">${pi}${d.position}</span>
+      </div>`;
+    } else {
+      cards+=`<div class="pcard pcard-empty">Empty Slot</div>`;
+    }
+  }
+
+  return `
+  <div>
+    <div class="section-title" style="color:${color}">${name}</div>
+    <div class="metric">
+      <div class="lbl">GOLD</div>
+      <div class="val" style="color:${color}">${pts}G</div>
+      ${spent>0?`<div style="font-size:.75em;color:#888">-${spent} 소모</div>`:''}
+    </div>
+    <div style="font-size:.8em;color:${ddUsed?'#555':'#C89B3C'};text-align:center;margin-bottom:6px">
+      ${ddUsed?'💥 더블다운 사용됨':'💥 더블다운 대기 중'}
+    </div>
+    ${cards}
+  </div>`;
+}
+
+// ── 결과 ──────────────────────────────────────────────────────────────────
+function renderResult(){
+  const trade   = gs.trade;
+  const selA    = gs.sel_a || [];
+  const selB    = gs.sel_b || [];
+  const canSwap = selA.length===selB.length && selA.length>0;
+
+  const teamA = buildResultTeam('a', trade);
+  const teamB = buildResultTeam('b', trade);
+
+  let tradeCenter;
+  if(trade){
+    const bcolor = canSwap ? '#00C060' : '#C89B3C';
+    const txt = canSwap
+      ? `🔵 ${selA.length}명 ↔ 🔴 ${selB.length}명  ✅ 교환 가능!`
+      : `🔵 ${selA.length}명 선택 ↔ 🔴 ${selB.length}명 선택  (수를 맞춰주세요)`;
+    tradeCenter=`
+    <div class="trade-status" style="border-color:${bcolor};color:${bcolor}">${txt}</div>
+    <div style="color:#888;font-size:.82em;text-align:center;margin-bottom:8px">
+      양 팀 선수 카드를 클릭해 선택하세요
+    </div>
+    <button onclick="send('trade_confirm')" ${canSwap?'':'disabled'} style="margin-bottom:6px">
+      ✅ 교환 확정
+    </button>
+    <button onclick="send('trade_cancel')" style="border-color:#888;color:#888">
+      ❌ 취소
+    </button>`;
+  } else {
+    tradeCenter=`
+    <button onclick="send('trade_start')" style="margin-bottom:6px">🔄 트레이드 시작</button>
+    <button onclick="send('reset')" style="border-color:#555;color:#555">🔁 새 게임</button>`;
+  }
+
+  const hist = (gs.history||[]).slice().reverse().map(h=>`
+    <div class="hist-item hist-${h.type}">${h.result}</div>`).join('');
+
+  document.getElementById('app').innerHTML=`
+  <h1>🏆 드래프트 완료!</h1>
+  <div style="max-width:960px;margin:0 auto">
+    <div class="auction-grid">
+      ${teamA}
+      <div>
+        <div class="card">${tradeCenter}</div>
+        ${hist?`
+        <details class="card">
+          <summary style="cursor:pointer;color:#888;font-size:.85em">📋 전체 경매 기록</summary>
+          <div style="margin-top:8px">${hist}</div>
+        </details>`:''}
+      </div>
+      ${teamB}
+    </div>
+  </div>`;
+}
+
+function buildResultTeam(team, tradeMode){
+  const t      = team==='a' ? gs.team_a : gs.team_b;
+  const color  = team==='a' ? '#0AC8B9' : '#E91E63';
+  const name   = team==='a' ? '🔵 BLUE TEAM' : '🔴 RED TEAM';
+  const cls    = team==='a' ? 'pcard-a' : 'pcard-b';
+  const sel    = team==='a' ? (gs.sel_a||[]) : (gs.sel_b||[]);
+  const sp     = gs.cfg?.sp || 100;
+  const pts    = t?.points ?? sp;
+  const spent  = sp - pts;
+  const members= t?.members || [];
+
+  let cards='';
+  for(let i=0;i<members.length;i++){
+    const m  = members[i];
+    const d  = (gs.all_players||{})[m]||{tier:'언랭',position:'미정'};
+    const tc = TIER_COLOR[d.tier]||'#888';
+    const pi = POS_ICON[d.position]||'❓';
+    const icon = i===0?'👑':String(i);
+    const isSel = sel.includes(m);
+    if(tradeMode){
+      cards+=`<div class="pcard ${cls} ${isSel?'pcard-sel':''}"
+        onclick="send('trade_toggle',{player:'${m}',team:'${team}'})"
+        style="cursor:pointer">
+        <span style="min-width:24px">${isSel?'✅':icon}</span>
+        <span style="flex:1;margin:0 6px">${m}</span>
+        <span style="color:${tc};font-size:.78em;margin-right:4px">${d.tier}</span>
+        <span style="font-size:.8em;color:#aaa">${pi}${d.position}</span>
+      </div>`;
+    } else {
+      cards+=`<div class="pcard ${cls}">
+        <span style="min-width:24px">${icon}</span>
+        <span style="flex:1;margin:0 6px">${m}</span>
+        <span style="color:${tc};font-size:.78em;margin-right:4px">${d.tier}</span>
+        <span style="font-size:.8em;color:#aaa">${pi}${d.position}</span>
+      </div>`;
+    }
+  }
+
+  return `
+  <div>
+    <div class="section-title" style="color:${color}">${name}</div>
+    <div class="metric">
+      <div class="lbl">최종 GOLD</div>
+      <div class="val" style="color:${color}">${pts}G</div>
+      ${spent>0?`<div style="font-size:.75em;color:#888">-${spent} 소모</div>`:''}
+    </div>
+    ${cards}
+  </div>`;
+}
+
+// ── 초기 렌더 ─────────────────────────────────────────────────────────────
+renderHome();
+</script>
+</body>
+</html>
