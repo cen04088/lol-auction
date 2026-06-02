@@ -95,17 +95,16 @@ const TIER_COLOR={언랭:'#888',아이언:'#8B6355',브론즈:'#AD5600',실버:'
   플래티넘:'#00B4A0',에메랄드:'#00C060',다이아:'#576BCE',마스터:'#9D4DC3',그랜드마스터:'#CF3F3F',챌린저:'#F4C874'};
 
 let ws=null, myRole=null, myRoom=null, gs=null;
-let _paused=false;
 
 // 렌더 전후 폼 상태 보존용
-let _ui = {bid:'', dd:false, details:{}};
+let _ui = {bid:'', dd:false, details:{}, focused:null};
 
 function _saveUI(){
   const inp = document.getElementById('bid-input');
   const chk = document.getElementById('dd-chk');
   if(inp) _ui.bid = inp.value;
   if(chk) _ui.dd  = chk.checked;
-  // 모든 <details> 열림 상태 id 기준으로 저장
+  _ui.focused = document.activeElement ? document.activeElement.id : null;
   document.querySelectorAll('details[id]').forEach(d => {
     _ui.details[d.id] = d.open;
   });
@@ -114,11 +113,22 @@ function _saveUI(){
 function _restoreUI(){
   const inp = document.getElementById('bid-input');
   const chk = document.getElementById('dd-chk');
-  if(inp && _ui.bid) inp.value = _ui.bid;
+  if(inp && _ui.bid !== undefined) inp.value = _ui.bid;
   if(chk) chk.checked = _ui.dd;
   document.querySelectorAll('details[id]').forEach(d => {
     if(_ui.details[d.id] !== undefined) d.open = _ui.details[d.id];
   });
+  // 포커스 복원
+  if(_ui.focused){
+    const el = document.getElementById(_ui.focused);
+    if(el){
+      el.focus();
+      if(el.tagName==='INPUT' && el.type!=='checkbox'){
+        const len = el.value.length;
+        el.setSelectionRange(len, len);
+      }
+    }
+  }
 }
 
 const A = id => document.getElementById(id);
@@ -127,16 +137,14 @@ function send(type,data={}){
 }
 
 function pauseTimer(){
-  _paused = !_paused;
-  const btn = document.getElementById('pause-btn');
-  if(btn) btn.textContent = _paused ? '▶️ 재개' : '⏸️ 일시정지';
+  send(gs?.paused ? 'resume_timer' : 'pause_timer');
 }
 
 function goHome(){
   if(!confirm('홈으로 돌아가면 현재 게임에서 나가집니다. 계속하시겠습니까?')) return;
   if(ws) ws.close();
-  ws=null; gs=null; myRole=null; myRoom=null; _paused=false;
-  _ui={bid:'', dd:false, details:{}};
+  ws=null; gs=null; myRole=null; myRoom=null;
+  _ui={bid:'', dd:false, details:{}, focused:null};
   renderHome();
 }
 
@@ -161,11 +169,11 @@ function connect(){
   ws.onmessage = e => {
     const msg = JSON.parse(e.data);
     if(msg.type==='state'){
-      if(_paused && gs?.phase==='auction' && msg.d?.phase==='auction') {
-        // 일시정지 중: 타이머 UI만 업데이트, 입찰 폼은 유지
-        gs = msg.d; myRole = msg.role;
+      if(msg.timer_only){
+        // 타이머만 변경 → 입력 폼 그대로, timer-display만 갱신
+        gs.timer = msg.d.timer;
         const tEl = document.getElementById('timer-display');
-        if(tEl) tEl.innerHTML = buildTimerHtml(gs.timer ?? 0);
+        if(tEl) tEl.innerHTML = buildTimerHtml(gs.timer);
         return;
       }
       _saveUI();
@@ -248,6 +256,12 @@ function renderLobby(){
     <div class="card" style="text-align:center;color:#888">
       블루팀 팀장이 설정을 시작할 때까지 대기...
     </div>`}
+    <div class="card" style="text-align:center">
+      <button onclick="goHome()"
+        style="border-color:#555;color:#888;font-size:.9em">
+        🏠 메인 화면으로
+      </button>
+    </div>
   </div>`;
 }
 
@@ -399,11 +413,12 @@ function renderWaiting(){
 // ── 타이머 HTML 빌더 (부분 업데이트용으로 분리) ──────────────────────────
 function buildTimerHtml(rem){
   const maxTimer = gs?.cfg?.timer || 30;
-  const pct    = Math.round(100*rem/maxTimer);
-  const tcolor = rem > maxTimer*.5 ? '#00C060' : rem > maxTimer*.2 ? '#C89B3C' : '#CF3F3F';
-  const paused = _paused ? ' (일시정지)' : '';
+  const paused   = gs?.paused;
+  const pct      = Math.round(100*rem/maxTimer);
+  const tcolor   = paused ? '#555' : rem > maxTimer*.5 ? '#00C060' : rem > maxTimer*.2 ? '#C89B3C' : '#CF3F3F';
+  const label    = paused ? `⏸️ ${rem}s (일시정지)` : `⏱️ ${rem}s`;
   return `<div class="timer-box" style="border-color:${tcolor}">
-    <div class="timer-num" style="color:${tcolor}">⏱️ ${rem}s${paused}</div>
+    <div class="timer-num" style="color:${tcolor}">${label}</div>
     <div class="timer-bar">
       <div class="timer-fill" style="width:${pct}%;background:${tcolor}"></div>
     </div>
@@ -467,7 +482,7 @@ function renderAuction(){
     ${(myRole==='blue'||myRole==='red') ? `
     <button id="pause-btn" onclick="pauseTimer()"
       style="width:auto;padding:5px 14px;font-size:.82em;margin:0">
-      ${_paused?'▶️ 재개':'⏸️ 일시정지'}
+      ${gs.paused?'▶️ 재개':'⏸️ 일시정지'}
     </button>` : ''}
     <button onclick="goHome()"
       style="width:auto;padding:5px 14px;font-size:.82em;margin:0;border-color:#555;color:#888">
@@ -581,6 +596,10 @@ function buildMyBidInput(team, pts){
       <span style="color:${ddUsed?'#555':'#C89B3C'};font-size:.9em">
         💥 더블다운 ${ddUsed?'(사용됨)':'사용!'}
       </span>
+      <span title="입력한 입찰금액이 2배로 처리됩니다.&#10;잔여 포인트를 초과하지 않는 범위 내에서 적용됩니다.&#10;팀당 게임 전체에서 1회만 사용 가능합니다."
+        style="cursor:help;color:#888;font-size:.85em;border:1px solid #555;
+          border-radius:50%;width:17px;height:17px;display:inline-flex;
+          align-items:center;justify-content:center;flex-shrink:0">?</span>
     </label>
     <button onclick="submitBid()" style="margin-top:8px;border-color:${color};color:${color}">
       ⚡ 입찰 확정

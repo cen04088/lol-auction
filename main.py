@@ -37,6 +37,8 @@ class Room:
                 "dd_a": False, "dd_b": False,
                 "a_done": False, "b_done": False,
             },
+            "paused": False,
+            "paused_rem": 0,
             "trade": False,
             "sel_a": [], "sel_b": [],
             "last_msg": "",
@@ -76,12 +78,17 @@ class Room:
         v["room_id"]   = self.id
         return v
 
-    async def _push(self):
+    async def _push(self, timer_only: bool = False):
         for role in list(self.ws):
-            await self._emit(role, {"type": "state", "d": self._view(role), "role": role})
+            msg = {"type": "state", "d": self._view(role), "role": role}
+            if timer_only:
+                msg["timer_only"] = True
+            await self._emit(role, msg)
 
     # ── 타이머 ───────────────────────────────────────────────────────────────
     def _rem(self) -> int:
+        if self.s.get("paused"):
+            return self.s.get("paused_rem", self.s["cfg"]["timer"])
         if not self.s.get("t0"):
             return self.s["cfg"]["timer"]
         return max(0, self.s["cfg"]["timer"] - int(time.time() - self.s["t0"]))
@@ -93,15 +100,17 @@ class Room:
         self.tick = asyncio.create_task(self._ticker())
 
     async def _ticker(self):
-        """0.5초마다 체크 → 표시값이 바뀔 때만 push (Windows sleep 부정확 대응)"""
+        """0.5초마다 체크 → 값 바뀔 때만 push, 일시정지 중엔 건너뜀"""
         try:
             last_rem = self._rem()
             while self.s["phase"] == "auction":
                 await asyncio.sleep(0.5)
+                if self.s.get("paused"):
+                    continue
                 rem = self._rem()
                 if rem != last_rem:
                     last_rem = rem
-                    await self._push()
+                    await self._push(timer_only=True)
                 if rem <= 0:
                     b = self.s["bid"]
                     if not b["a_done"]: b["a"], b["a_done"] = 0, True
@@ -283,6 +292,20 @@ class Room:
             for i, v in zip(ia, vb): ma[i] = v
             for i, v in zip(ib, va): mb[i] = v
             self.s.update({"trade": False, "sel_a": [], "sel_b": []})
+            await self._push()
+
+        elif t == "pause_timer":
+            if role not in ("blue", "red"): return
+            self.s["paused"]     = True
+            self.s["paused_rem"] = self._rem()
+            await self._push()
+
+        elif t == "resume_timer":
+            if role not in ("blue", "red"): return
+            rem = self.s.get("paused_rem", self._rem())
+            # t0를 재조정: _rem()이 정확히 rem을 반환하도록
+            self.s["t0"]     = time.time() - (self.s["cfg"]["timer"] - rem)
+            self.s["paused"] = False
             await self._push()
 
         elif t == "reset":
