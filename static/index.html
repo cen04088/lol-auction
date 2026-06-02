@@ -33,7 +33,7 @@ label{color:#C89B3C;font-size:.9em;font-weight:600;display:block;margin:6px 0 2p
 .tag-gray{border:1px solid #555;color:#555}
 /* Player card */
 .pcard{display:flex;align-items:center;justify-content:space-between;
-  padding:8px 12px;border-radius:5px;margin:4px 0;font-weight:700;font-size:.88em}
+  padding:12px 14px;border-radius:6px;margin:5px 0;font-weight:700;font-size:.97em;min-height:46px}
 .pcard-a{border:2px solid #0AC8B9;background:rgba(10,200,185,.08);color:#0AC8B9}
 .pcard-b{border:2px solid #E91E63;background:rgba(233,30,99,.08);color:#E91E63}
 .pcard-empty{border:1px dashed #333;color:#444;justify-content:center;font-style:italic}
@@ -76,8 +76,8 @@ th{background:#0d1b2a;color:#C89B3C;padding:8px;text-align:left;border:1px solid
 td{padding:4px 6px;border:1px solid #C89B3C22}
 td input,td select{margin:0;padding:5px 8px;font-size:.85em}
 /* Grid layout for auction */
-.auction-grid{display:grid;grid-template-columns:1fr 1.6fr 1fr;gap:10px}
-@media(max-width:700px){.auction-grid{grid-template-columns:1fr}}
+.auction-grid{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:12px;max-width:1200px;margin:0 auto}
+@media(max-width:800px){.auction-grid{grid-template-columns:1fr}}
 .section-title{font-size:.95em;font-weight:700;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #C89B3C44}
 .metric{background:rgba(1,10,19,.9);border:1px solid #C89B3C;border-radius:6px;
   padding:8px 12px;margin-bottom:8px;text-align:center}
@@ -95,10 +95,49 @@ const TIER_COLOR={언랭:'#888',아이언:'#8B6355',브론즈:'#AD5600',실버:'
   플래티넘:'#00B4A0',에메랄드:'#00C060',다이아:'#576BCE',마스터:'#9D4DC3',그랜드마스터:'#CF3F3F',챌린저:'#F4C874'};
 
 let ws=null, myRole=null, myRoom=null, gs=null;
+let _paused=false;
+
+// 렌더 전후 폼 상태 보존용
+let _ui = {bid:'', dd:false, details:{}};
+
+function _saveUI(){
+  const inp = document.getElementById('bid-input');
+  const chk = document.getElementById('dd-chk');
+  if(inp) _ui.bid = inp.value;
+  if(chk) _ui.dd  = chk.checked;
+  // 모든 <details> 열림 상태 id 기준으로 저장
+  document.querySelectorAll('details[id]').forEach(d => {
+    _ui.details[d.id] = d.open;
+  });
+}
+
+function _restoreUI(){
+  const inp = document.getElementById('bid-input');
+  const chk = document.getElementById('dd-chk');
+  if(inp && _ui.bid) inp.value = _ui.bid;
+  if(chk) chk.checked = _ui.dd;
+  document.querySelectorAll('details[id]').forEach(d => {
+    if(_ui.details[d.id] !== undefined) d.open = _ui.details[d.id];
+  });
+}
 
 const A = id => document.getElementById(id);
 function send(type,data={}){
   if(ws && ws.readyState===1) ws.send(JSON.stringify({type,...data}));
+}
+
+function pauseTimer(){
+  _paused = !_paused;
+  const btn = document.getElementById('pause-btn');
+  if(btn) btn.textContent = _paused ? '▶️ 재개' : '⏸️ 일시정지';
+}
+
+function goHome(){
+  if(!confirm('홈으로 돌아가면 현재 게임에서 나가집니다. 계속하시겠습니까?')) return;
+  if(ws) ws.close();
+  ws=null; gs=null; myRole=null; myRoom=null; _paused=false;
+  _ui={bid:'', dd:false, details:{}};
+  renderHome();
 }
 
 // ── 연결 ──────────────────────────────────────────────────────────────────
@@ -121,7 +160,19 @@ function connect(){
   ws = new WebSocket(`${proto}//${location.host}/ws/${myRoom}/${myRole}`);
   ws.onmessage = e => {
     const msg = JSON.parse(e.data);
-    if(msg.type==='state'){ gs=msg.d; myRole=msg.role; render(); }
+    if(msg.type==='state'){
+      if(_paused && gs?.phase==='auction' && msg.d?.phase==='auction') {
+        // 일시정지 중: 타이머 UI만 업데이트, 입찰 폼은 유지
+        gs = msg.d; myRole = msg.role;
+        const tEl = document.getElementById('timer-display');
+        if(tEl) tEl.innerHTML = buildTimerHtml(gs.timer ?? 0);
+        return;
+      }
+      _saveUI();
+      gs=msg.d; myRole=msg.role;
+      render();
+      _restoreUI();
+    }
     else if(msg.type==='error'){ alert(msg.msg); ws=null; gs=null; renderHome(); }
   };
   ws.onclose = () => { if(gs){ gs=null; renderHome(); } };
@@ -345,6 +396,20 @@ function renderWaiting(){
   </div>`;
 }
 
+// ── 타이머 HTML 빌더 (부분 업데이트용으로 분리) ──────────────────────────
+function buildTimerHtml(rem){
+  const maxTimer = gs?.cfg?.timer || 30;
+  const pct    = Math.round(100*rem/maxTimer);
+  const tcolor = rem > maxTimer*.5 ? '#00C060' : rem > maxTimer*.2 ? '#C89B3C' : '#CF3F3F';
+  const paused = _paused ? ' (일시정지)' : '';
+  return `<div class="timer-box" style="border-color:${tcolor}">
+    <div class="timer-num" style="color:${tcolor}">⏱️ ${rem}s${paused}</div>
+    <div class="timer-bar">
+      <div class="timer-fill" style="width:${pct}%;background:${tcolor}"></div>
+    </div>
+  </div>`;
+}
+
 // ── 경매 ──────────────────────────────────────────────────────────────────
 function renderAuction(){
   const sp   = gs.cfg?.sp || 100;
@@ -354,17 +419,8 @@ function renderAuction(){
   const player   = pool[0];
   const pinfo    = (gs.all_players||{})[player] || {tier:'언랭',position:'미정'};
   const rem      = gs.timer ?? gs.cfg?.timer ?? 30;
-  const maxTimer = gs.cfg?.timer || 30;
-  const pct      = Math.round(100*rem/maxTimer);
-  const tcolor   = rem > maxTimer*.5 ? '#00C060' : rem > maxTimer*.2 ? '#C89B3C' : '#CF3F3F';
 
-  const timerHtml=`
-  <div class="timer-box" style="border-color:${tcolor}">
-    <div class="timer-num" style="color:${tcolor}">⏱️ ${rem}s</div>
-    <div class="timer-bar">
-      <div class="timer-fill" style="width:${pct}%;background:${tcolor}"></div>
-    </div>
-  </div>`;
+  const timerHtml = `<div id="timer-display">${buildTimerHtml(rem)}</div>`;
 
   const tc = TIER_COLOR[pinfo.tier]||'#888';
   const pi = POS_ICON[pinfo.position]||'❓';
@@ -386,27 +442,37 @@ function renderAuction(){
   // 입찰 영역 (역할별)
   const bidHtml = buildBidArea();
 
-  // 히스토리
-  const hist = (gs.history||[]).slice().reverse().slice(0,5).map(h=>`
+  // 히스토리 (id 부여 → 열림상태 보존)
+  const hist = (gs.history||[]).slice().reverse().map(h=>`
     <div class="hist-item hist-${h.type}">${h.result}</div>`).join('');
   const histHtml = hist ? `
-  <details style="margin-top:8px">
+  <details id="det-hist" style="margin-top:8px">
     <summary style="color:#888;font-size:.85em;cursor:pointer">📋 기록 (${(gs.history||[]).length}건)</summary>
-    <div style="margin-top:4px">${hist}</div>
+    <div style="margin-top:4px;max-height:200px;overflow-y:auto">${hist}</div>
   </details>` : '';
 
   // 팀 패널
   const teamA = buildTeamPanel('a');
   const teamB = buildTeamPanel('b');
 
+  const roleLabel = myRole==='blue'?'🔵 블루팀 팀장':myRole==='red'?'🔴 레드팀 팀장':'👁️ 관전';
   document.getElementById('app').innerHTML=`
   <h1>⚔️ 롤 내전 경매</h1>
-  <div style="text-align:center;margin-bottom:6px;font-size:.8em;color:#555">
-    방 코드: <b style="color:#C89B3C">${myRoom}</b>
-    &nbsp;|&nbsp;
-    <span style="color:${myRole==='blue'?'#0AC8B9':'#E91E63'}">
-      ${myRole==='blue'?'🔵 블루팀 팀장':myRole==='red'?'🔴 레드팀 팀장':'👁️ 관전'}
+  <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
+    <span style="font-size:.8em;color:#555">
+      방 코드: <b style="color:#C89B3C">${myRoom}</b>
+      &nbsp;|&nbsp;
+      <span style="color:${myRole==='blue'?'#0AC8B9':myRole==='red'?'#E91E63':'#888'}">${roleLabel}</span>
     </span>
+    ${(myRole==='blue'||myRole==='red') ? `
+    <button id="pause-btn" onclick="pauseTimer()"
+      style="width:auto;padding:5px 14px;font-size:.82em;margin:0">
+      ${_paused?'▶️ 재개':'⏸️ 일시정지'}
+    </button>` : ''}
+    <button onclick="goHome()"
+      style="width:auto;padding:5px 14px;font-size:.82em;margin:0;border-color:#555;color:#888">
+      🏠 홈
+    </button>
   </div>
   <div class="auction-grid">
     ${teamA}
@@ -614,6 +680,12 @@ function renderResult(){
 
   document.getElementById('app').innerHTML=`
   <h1>🏆 드래프트 완료!</h1>
+  <div style="text-align:center;margin-bottom:6px">
+    <button onclick="goHome()"
+      style="width:auto;padding:5px 16px;font-size:.82em;border-color:#555;color:#888">
+      🏠 홈으로
+    </button>
+  </div>
   <div style="max-width:960px;margin:0 auto">
     <div class="auction-grid">
       ${teamA}

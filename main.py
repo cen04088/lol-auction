@@ -93,17 +93,21 @@ class Room:
         self.tick = asyncio.create_task(self._ticker())
 
     async def _ticker(self):
+        """0.5초마다 체크 → 표시값이 바뀔 때만 push (Windows sleep 부정확 대응)"""
         try:
+            last_rem = self._rem()
             while self.s["phase"] == "auction":
-                await asyncio.sleep(1)
+                await asyncio.sleep(0.5)
                 rem = self._rem()
-                await self._push()
+                if rem != last_rem:
+                    last_rem = rem
+                    await self._push()
                 if rem <= 0:
                     b = self.s["bid"]
                     if not b["a_done"]: b["a"], b["a_done"] = 0, True
                     if not b["b_done"]: b["b"], b["b_done"] = 0, True
                     await self._push()
-                    await asyncio.sleep(1.5)
+                    await asyncio.sleep(1.2)
                     await self._resolve()
                     return
         except asyncio.CancelledError:
