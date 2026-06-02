@@ -89,6 +89,16 @@ td input,td select{margin:0;padding:5px 8px;font-size:.85em}
   padding:8px 12px;margin-bottom:8px;text-align:center}
 .metric .val{font-size:1.3em;font-weight:900}
 .metric .lbl{font-size:.75em;color:#888}
+/* Custom tooltip */
+.tip-wrap{position:relative;display:inline-flex;align-items:center}
+.tip-box{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+  background:#0d1b2a;border:1px solid #C89B3C;border-radius:7px;padding:9px 12px;
+  color:#C89B3C;font-size:.8em;line-height:1.5;white-space:normal;width:210px;
+  z-index:200;pointer-events:none;font-weight:400;text-align:left;
+  box-shadow:0 4px 16px rgba(0,0,0,.6)}
+.tip-box::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
+  border:6px solid transparent;border-top-color:#C89B3C}
+.tip-wrap:hover .tip-box,.tip-wrap.open .tip-box{display:block}
 </style>
 </head>
 <body>
@@ -638,10 +648,16 @@ function buildMyBidInput(team, pts){
       <span style="color:${ddUsed?'#555':'#C89B3C'};font-size:.9em">
         💥 더블다운 ${ddUsed?'(사용됨)':'사용!'}
       </span>
-      <span title="입력한 입찰금액이 2배로 처리됩니다.&#10;잔여 포인트를 초과하지 않는 범위 내에서 적용됩니다.&#10;팀당 게임 전체에서 1회만 사용 가능합니다."
-        style="cursor:help;color:#888;font-size:.85em;border:1px solid #555;
+      <span class="tip-wrap" onclick="this.classList.toggle('open')">
+        <span style="cursor:pointer;color:#888;font-size:.85em;border:1px solid #555;
           border-radius:50%;width:17px;height:17px;display:inline-flex;
           align-items:center;justify-content:center;flex-shrink:0">?</span>
+        <span class="tip-box">
+          입찰 금액 × 2로 처리됩니다.<br>
+          잔여 포인트 초과 시 자동 캡.<br>
+          팀당 게임 전체에서 <b>1회</b>만 사용 가능.
+        </span>
+      </span>
     </label>
     <button onclick="submitBid()" style="margin-top:8px;border-color:${color};color:${color}">
       ⚡ 입찰 확정

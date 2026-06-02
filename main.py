@@ -306,9 +306,7 @@ class Room:
 
         elif t == "resume_timer":
             if role not in ("blue", "red"): return
-            rem = self.s.get("paused_rem", self._rem())
-            # t0를 재조정: _rem()이 정확히 rem을 반환하도록
-            self.s["t0"]     = time.time() - (self.s["cfg"]["timer"] - rem)
+            self.s["t0"]     = time.time()   # 해제 시 최대 시간부터 재시작
             self.s["paused"] = False
             await self._push()
 
