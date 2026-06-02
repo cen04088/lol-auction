@@ -56,6 +56,12 @@ label{color:#C89B3C;font-size:.9em;font-weight:600;display:block;margin:6px 0 2p
 .bid-reveal{font-size:1.4em;padding:14px;border-radius:8px;text-align:center;
   border:2px solid #C89B3C;background:rgba(200,155,60,.1);margin:6px 0;animation:pop .3s ease}
 @keyframes pop{from{transform:scale(.95);opacity:.6}to{transform:scale(1);opacity:1}}
+@keyframes pulse-danger{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.05);opacity:.8}}
+@keyframes slide-left{from{transform:translateX(-24px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes slide-right{from{transform:translateX(24px);opacity:0}to{transform:translateX(0);opacity:1}}
+@keyframes winner-glow{0%{box-shadow:0 0 0 rgba(0,192,96,0)}60%{box-shadow:0 0 28px rgba(0,192,96,.75)}100%{box-shadow:0 0 12px rgba(0,192,96,.35)}}
+@keyframes toast-in{from{top:0;opacity:0}to{top:24px;opacity:1}}
+.timer-danger{animation:pulse-danger .6s ease-in-out infinite}
 /* History */
 .hist-item{padding:5px 10px;border-radius:4px;margin:3px 0;font-size:.82em;font-weight:600;border-left:3px solid}
 .hist-blue{border-color:#0AC8B9;background:rgba(10,200,185,.06)}
@@ -134,6 +140,21 @@ function _restoreUI(){
 const A = id => document.getElementById(id);
 function send(type,data={}){
   if(ws && ws.readyState===1) ws.send(JSON.stringify({type,...data}));
+}
+
+function hexToRgb(hex){
+  const r=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return r ? `${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}` : '136,136,136';
+}
+
+function copyCode(code){
+  navigator.clipboard.writeText(code).then(()=>{
+    const el=document.createElement('div');
+    el.textContent='📋 방 코드 복사됨!';
+    el.style.cssText='position:fixed;top:24px;left:50%;transform:translateX(-50%);background:#00C060;color:#000;padding:9px 20px;border-radius:8px;font-weight:700;z-index:9999;animation:toast-in .25s ease,pop .25s ease';
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),1800);
+  });
 }
 
 function pauseTimer(){
@@ -237,8 +258,15 @@ function renderLobby(){
   <div style="max-width:480px;margin:0 auto">
     <div class="card" style="text-align:center">
       <div style="font-size:.9em;color:#888;margin-bottom:4px">방 코드</div>
-      <div class="room-code">${gs.room_id}</div>
-      <div style="font-size:.85em;color:#888">이 코드를 다른 팀원에게 공유하세요</div>
+      <div class="room-code" onclick="copyCode('${gs.room_id}')"
+        style="cursor:pointer;user-select:none" title="클릭하여 복사">
+        ${gs.room_id}
+      </div>
+      <button onclick="copyCode('${gs.room_id}')"
+        style="width:auto;padding:6px 20px;font-size:.85em;margin-top:6px;border-color:#555;color:#888">
+        📋 코드 복사
+      </button>
+      <div style="font-size:.82em;color:#666;margin-top:6px">이 코드를 다른 팀원에게 공유하세요</div>
     </div>
     <div class="card">
       <h3>접속 현황</h3>
@@ -415,10 +443,12 @@ function buildTimerHtml(rem){
   const maxTimer = gs?.cfg?.timer || 30;
   const paused   = gs?.paused;
   const pct      = Math.round(100*rem/maxTimer);
+  const danger   = !paused && rem <= 10 && rem > 0;
   const tcolor   = paused ? '#555' : rem > maxTimer*.5 ? '#00C060' : rem > maxTimer*.2 ? '#C89B3C' : '#CF3F3F';
   const label    = paused ? `⏸️ ${rem}s (일시정지)` : `⏱️ ${rem}s`;
-  return `<div class="timer-box" style="border-color:${tcolor}">
-    <div class="timer-num" style="color:${tcolor}">${label}</div>
+  const numSize  = danger ? '2.8em' : '2.2em';
+  return `<div class="timer-box${danger?' timer-danger':''}" style="border-color:${tcolor}${danger?';border-width:3px':''}">
+    <div class="timer-num" style="color:${tcolor};font-size:${numSize};transition:font-size .2s">${label}</div>
     <div class="timer-bar">
       <div class="timer-fill" style="width:${pct}%;background:${tcolor}"></div>
     </div>
@@ -475,7 +505,7 @@ function renderAuction(){
   <h1>⚔️ 롤 내전 경매</h1>
   <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
     <span style="font-size:.8em;color:#555">
-      방 코드: <b style="color:#C89B3C">${myRoom}</b>
+      방 코드: <b style="color:#C89B3C;cursor:pointer" onclick="copyCode('${myRoom}')" title="클릭하여 복사">${myRoom} 📋</b>
       &nbsp;|&nbsp;
       <span style="color:${myRole==='blue'?'#0AC8B9':myRole==='red'?'#E91E63':'#888'}">${roleLabel}</span>
     </span>
@@ -510,14 +540,26 @@ function buildBidArea(){
     const vb  = gs.bid_b_val ?? 0;
     const dda = gs.bid_dd_a;
     const ddb = gs.bid_dd_b;
+    const winner = va > vb ? 'blue' : vb > va ? 'red' : 'tie';
+    const aExtra = winner==='blue'
+      ? 'animation:winner-glow .7s ease forwards;border-color:#00C060;border-width:3px'
+      : winner==='tie' ? '' : 'opacity:.65';
+    const bExtra = winner==='red'
+      ? 'animation:winner-glow .7s ease forwards;border-color:#00C060;border-width:3px'
+      : winner==='tie' ? '' : 'opacity:.65';
     return `
     <div class="bid-area" style="border-color:#C89B3C">
       <div style="text-align:center;color:#888;font-size:.85em;margin-bottom:8px">📢 낙찰 결과</div>
-      <div class="row">
-        <div class="bid-reveal blue">🔵 ${dda?'💥':''}${va}pt</div>
-        <div style="display:flex;align-items:center;padding:0 6px;color:#888">vs</div>
-        <div class="bid-reveal red">🔴 ${ddb?'💥':''}${vb}pt</div>
+      <div class="row" style="align-items:center">
+        <div class="bid-reveal blue" style="animation:slide-left .3s ease;${aExtra}">
+          🔵 ${dda?'💥':''}${va}pt${winner==='blue'?' 👑':''}
+        </div>
+        <div style="display:flex;align-items:center;padding:0 8px;color:#888;font-size:1.1em;font-weight:900;flex-shrink:0">vs</div>
+        <div class="bid-reveal red" style="animation:slide-right .3s ease;${bExtra}">
+          🔴 ${ddb?'💥':''}${vb}pt${winner==='red'?' 👑':''}
+        </div>
       </div>
+      ${winner==='tie'?`<div style="text-align:center;color:#C89B3C;margin-top:8px;font-weight:700;font-size:1em">⚔️ 동점!</div>`:''}
     </div>`;
   }
 
@@ -612,7 +654,9 @@ function submitBid(){
   const dd    = A('dd-chk');
   if(!input) return;
   const amt = parseInt(input.value);
-  if(isNaN(amt) || amt<0){ alert('올바른 숫자를 입력하세요.'); return; }
+  const pts = myRole==='blue' ? (gs?.team_a?.points ?? 0) : (gs?.team_b?.points ?? 0);
+  if(isNaN(amt) || amt < 1){ alert('1 이상의 숫자를 입력하세요.'); return; }
+  if(amt > pts){ alert(`잔여 포인트(${pts}G)를 초과할 수 없습니다.`); return; }
   send('submit_bid',{amount:amt, use_dd: dd ? dd.checked : false});
 }
 
@@ -634,12 +678,16 @@ function buildTeamPanel(team){
       const d = (gs.all_players||{})[m]||{tier:'언랭',position:'미정'};
       const tc= TIER_COLOR[d.tier]||'#888';
       const pi= POS_ICON[d.position]||'❓';
-      const icon = i===0?'👑':String(i);
-      cards+=`<div class="pcard ${cls}">
-        <span style="min-width:24px">${icon}</span>
-        <span style="flex:1;margin:0 6px">${m}</span>
-        <span style="color:${tc};font-size:.78em;margin-right:4px">${d.tier}</span>
-        <span style="font-size:.8em;color:#aaa">${pi}${d.position}</span>
+      const isLeader = i===0;
+      const tierBg = `rgba(${hexToRgb(tc)},${isLeader?.13:.07})`;
+      const leaderStyle = isLeader
+        ? `border-width:3px;background:${tierBg};box-shadow:0 0 10px rgba(${hexToRgb(tc)},.2)`
+        : `background:${tierBg}`;
+      cards+=`<div class="pcard ${cls}" style="${leaderStyle}">
+        <span style="min-width:24px;font-size:${isLeader?'1em':'.85em'}">${isLeader?'👑':i}</span>
+        <span style="flex:1;margin:0 6px;font-size:${isLeader?'1.05em':'.97em'}">${m}</span>
+        <span style="color:${tc};font-size:.78em;margin-right:4px;font-weight:700">${d.tier}</span>
+        <span style="font-size:.85em;color:#aaa">${pi}</span>
       </div>`;
     } else {
       cards+=`<div class="pcard pcard-empty">Empty Slot</div>`;

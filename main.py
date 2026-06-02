@@ -249,8 +249,12 @@ class Room:
             b   = self.s["bid"]
 
             if role == "blue" and not b["a_done"]:
+                pts = self.s["team_a"]["points"]
+                amt = max(0, min(amt, pts))
                 b["a"], b["dd_a"], b["a_done"] = amt, dd, True
             elif role == "red" and not b["b_done"]:
+                pts = self.s["team_b"]["points"]
+                amt = max(0, min(amt, pts))
                 b["b"], b["dd_b"], b["b_done"] = amt, dd, True
             else:
                 return
