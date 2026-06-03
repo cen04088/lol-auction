@@ -28,17 +28,18 @@ class Room:
             "history": [],
             "all_players": {},
             "cfg": {
-                "sp": 100, "tie": "random",
-                "timer": 30, "bluff": False, "dd": True,
+                "sp": 100, "tie": "random", "timer": 30,
             },
-            "dd_a": False, "dd_b": False,
+            "bid_first": "blue",
             "bid": {
+                "turn": "blue",
                 "a": None, "b": None,
-                "dd_a": False, "dd_b": False,
                 "a_done": False, "b_done": False,
+                "a_passed": False, "b_passed": False,
             },
             "paused": False,
             "paused_rem": 0,
+            "resolving": False,           # 이중 resolve 방지
             "trade": False,
             "sel_a": [], "sel_b": [],
             "last_msg": "",
@@ -55,24 +56,43 @@ class Room:
                 pass
 
     def _view(self, role: str) -> dict:
-        """역할별 클라이언트 뷰 (상대방 입찰 숨김)"""
+        """역할별 클라이언트 뷰 (턴제 입찰)"""
         v = {k: self.s[k] for k in self.s if k not in ("bid", "t0")}
         b = self.s["bid"]
-        v["bid_a_done"] = b["a_done"]
-        v["bid_b_done"] = b["b_done"]
+        v["bid_turn"]     = b["turn"]
+        v["bid_a_done"]   = b["a_done"]
+        v["bid_b_done"]   = b["b_done"]
+        v["bid_a_passed"] = b.get("a_passed", False)
+        v["bid_b_passed"] = b.get("b_passed", False)
+
         both = b["a_done"] and b["b_done"]
         if both:
-            v["reveal"]   = True
-            v["bid_a_val"] = b["a"]
-            v["bid_b_val"] = b["b"]
-            v["bid_dd_a"]  = b["dd_a"]
-            v["bid_dd_b"]  = b["dd_b"]
+            v["reveal"]    = True
+            v["bid_a_val"] = b["a"] or 0
+            v["bid_b_val"] = b["b"] or 0
         else:
             v["reveal"] = False
+            first = self.s.get("bid_first", "blue")
+            if first == "blue" and b["a_done"]:
+                v["first_acted"]  = True
+                v["first_team"]   = "blue"
+                v["first_val"]    = b["a"] or 0
+                v["first_passed"] = b.get("a_passed", False)
+            elif first == "red" and b["b_done"]:
+                v["first_acted"]  = True
+                v["first_team"]   = "red"
+                v["first_val"]    = b["b"] or 0
+                v["first_passed"] = b.get("b_passed", False)
+            else:
+                v["first_acted"] = False
+
             if role == "blue":
-                v["my_val"] = b["a"]; v["my_dd"] = b["dd_a"]
+                v["my_val"]    = b["a"]
+                v["my_passed"] = b.get("a_passed", False)
             elif role == "red":
-                v["my_val"] = b["b"]; v["my_dd"] = b["dd_b"]
+                v["my_val"]    = b["b"]
+                v["my_passed"] = b.get("b_passed", False)
+
         v["connected"] = list(self.ws.keys())
         v["timer"]     = self._rem()
         v["room_id"]   = self.id
@@ -113,89 +133,132 @@ class Room:
                     await self._push(timer_only=True)
                 if rem <= 0:
                     b = self.s["bid"]
-                    if not b["a_done"]: b["a"], b["a_done"] = 0, True
-                    if not b["b_done"]: b["b"], b["b_done"] = 0, True
+                    # 현재 차례 팀 자동 포기
+                    if b["turn"] == "blue" and not b["a_done"]:
+                        b["a_passed"], b["a_done"] = True, True
+                    elif b["turn"] == "red" and not b["b_done"]:
+                        b["b_passed"], b["b_done"] = True, True
+                    else:
+                        return  # 이미 처리됨
                     await self._push()
-                    await asyncio.sleep(1.2)
-                    await self._resolve()
+                    await asyncio.sleep(0.8)
+                    await self._after_act()
                     return
         except asyncio.CancelledError:
             pass
 
-    # ── 낙찰 처리 ────────────────────────────────────────────────────────────
-    async def _resolve(self):
+    async def _after_act(self):
+        """한 팀이 행동한 후 처리: 턴 전환 or 최종 resolve 예약"""
+        b = self.s["bid"]
+        if b["a_done"] and b["b_done"]:
+            if self.s.get("resolving"):
+                return
+            self.s["resolving"] = True
+            await self._push()
+            asyncio.create_task(self._finish_resolve())
+        else:
+            # 후공 팀 턴으로 전환
+            b["turn"] = "red" if b["turn"] == "blue" else "blue"
+            await self._push()
+            await self._start_timer()
+
+    async def _finish_resolve(self):
+        """비동기 resolve (self-cancel 방지용 별도 태스크)"""
+        await asyncio.sleep(1.5)
         if self.tick and not self.tick.done():
             self.tick.cancel()
+        await self._resolve()
 
+    # ── 낙찰 처리 ────────────────────────────────────────────────────────────
+    async def _resolve(self):
         b  = self.s["bid"]
         va, vb = b["a"] or 0, b["b"] or 0
         pa = self.s["team_a"]["points"]
         pb = self.s["team_b"]["points"]
+        a_passed = b.get("a_passed", False)
+        b_passed = b.get("b_passed", False)
 
-        # 더블다운
-        cfg_dd = self.s["cfg"].get("dd", True)
-        aa, ua = va, False
-        ab, ub = vb, False
-        if cfg_dd and b["dd_a"] and not self.s["dd_a"]: aa, ua = min(va * 2, pa), True
-        if cfg_dd and b["dd_b"] and not self.s["dd_b"]: ab, ub = min(vb * 2, pb), True
-        if ua: self.s["dd_a"] = True
-        if ub: self.s["dd_b"] = True
-
-        # 블러핑
-        blf = self.s["cfg"]["bluff"]
-        def bluff(v):
-            return max(0, v + random.randint(-3, 3)) if blf else v
-        da, db = bluff(aa), bluff(ab)
-        bt = " 🎭" if blf else ""
-        ia = "💥" if ua else ""
-        ib = "💥" if ub else ""
+        # 다음 라운드 선공 전환
+        cur_first = self.s.get("bid_first", "blue")
+        next_first = "red" if cur_first == "blue" else "blue"
 
         player = self.s["pool"][0]
 
-        if aa == ab:
-            if self.s["cfg"]["tie"] == "random":
+        if a_passed and b_passed:
+            # 양팀 모두 포기 → 맨 뒤로
+            self.s["pool"].pop(0)
+            if len(self.s["pool"]) == 0:
+                # 마지막 선수인데 둘 다 포기 → 랜덤 배정
+                t = random.choice([self.s["team_a"], self.s["team_b"]])
+                t["members"].append(player)
+                msg, ht = f"⚠️ 마지막 선수 {player}님 랜덤 배정!", "tie"
+            else:
+                self.s["pool"].append(player)
+                msg, ht = f"⚠️ 양팀 모두 포기! {player}님은 맨 뒤로.", "tie"
+        else:
+            if a_passed:
                 nm = self.s["pool"].pop(0)
-                if random.choice([True, False]):
-                    self.s["team_a"]["members"].append(nm)
-                    self.s["team_a"]["points"] -= aa
-                    msg, ht = f"⚔️ 동점→랜덤: 🔵{ia} 블루팀이 {nm} 영입! ({da}pt vs {db}pt){bt}", "blue"
+                self.s["team_b"]["members"].append(nm)
+                self.s["team_b"]["points"] -= vb
+                msg, ht = f"🔴 레드팀, {nm} 영입! (블루 포기 / {vb}pt)", "red"
+            elif b_passed:
+                nm = self.s["pool"].pop(0)
+                self.s["team_a"]["members"].append(nm)
+                self.s["team_a"]["points"] -= va
+                msg, ht = f"🔵 블루팀, {nm} 영입! ({va}pt / 레드 포기)", "blue"
+            elif va == vb:
+                if self.s["cfg"]["tie"] == "random":
+                    nm = self.s["pool"].pop(0)
+                    if random.choice([True, False]):
+                        self.s["team_a"]["members"].append(nm)
+                        self.s["team_a"]["points"] -= va
+                        msg, ht = f"⚔️ 동점→랜덤: 🔵 블루팀이 {nm} 영입! ({va}pt vs {vb}pt)", "blue"
+                    else:
+                        self.s["team_b"]["members"].append(nm)
+                        self.s["team_b"]["points"] -= vb
+                        msg, ht = f"⚔️ 동점→랜덤: 🔴 레드팀이 {nm} 영입! ({vb}pt vs {va}pt)", "red"
                 else:
-                    self.s["team_b"]["members"].append(nm)
-                    self.s["team_b"]["points"] -= ab
-                    msg, ht = f"⚔️ 동점→랜덤: 🔴{ib} 레드팀이 {nm} 영입! ({db}pt vs {da}pt){bt}", "red"
+                    nm = self.s["pool"].pop(0)
+                    self.s["pool"].append(nm)
+                    msg, ht = f"⚠️ 동점({va}pt)! {nm}님은 맨 뒤로.", "tie"
+            elif va > vb:
+                nm = self.s["pool"].pop(0)
+                self.s["team_a"]["members"].append(nm)
+                self.s["team_a"]["points"] -= va
+                msg, ht = f"🔵 블루팀, {nm} 영입! ({va}pt vs {vb}pt)", "blue"
             else:
                 nm = self.s["pool"].pop(0)
-                self.s["pool"].append(nm)
-                msg, ht = f"⚠️ 동점({da}pt)! {nm}님은 맨 뒤로.", "tie"
-        elif aa > ab:
-            nm = self.s["pool"].pop(0)
-            self.s["team_a"]["members"].append(nm)
-            self.s["team_a"]["points"] -= aa
-            msg, ht = f"🔵{ia} 블루팀, {nm} 영입! ({da}pt vs {db}pt){bt}", "blue"
-        else:
-            nm = self.s["pool"].pop(0)
-            self.s["team_b"]["members"].append(nm)
-            self.s["team_b"]["points"] -= ab
-            msg, ht = f"🔴{ib} 레드팀, {nm} 영입! ({db}pt vs {da}pt){bt}", "red"
+                self.s["team_b"]["members"].append(nm)
+                self.s["team_b"]["points"] -= vb
+                msg, ht = f"🔴 레드팀, {nm} 영입! ({vb}pt vs {va}pt)", "red"
 
         self.s["last_msg"] = msg
         self.s["history"].append({"result": msg, "type": ht})
-        self.s["bid"] = {"a": None, "b": None, "dd_a": False, "dd_b": False,
-                          "a_done": False, "b_done": False}
+
+        # 다음 라운드 bid 초기화
+        self.s["bid_first"] = next_first
+        self.s["bid"] = {
+            "turn": next_first,
+            "a": None, "b": None,
+            "a_done": False, "b_done": False,
+            "a_passed": False, "b_passed": False,
+        }
+        self.s["resolving"] = False
+        self.s["paused"] = False
 
         # 완료 체크
-        if (len(self.s["team_a"]["members"]) == 5 or
-                len(self.s["team_b"]["members"]) == 5):
+        if (len(self.s["team_a"]["members"]) >= 5 or
+                len(self.s["team_b"]["members"]) >= 5):
             for pp in list(self.s["pool"]):
                 t = self.s["team_a"] if len(self.s["team_a"]["members"]) < 5 \
                     else self.s["team_b"]
                 t["members"].append(pp)
             self.s["pool"] = []
             self.s["phase"] = "result"
+            await self._push()
         else:
+            await self._push()
             await self._start_timer()
-
-        await self._push()
 
     # ── 메시지 처리 ──────────────────────────────────────────────────────────
     async def handle(self, role: str, data: dict):
@@ -229,15 +292,18 @@ class Room:
                 "pool":    pool,
                 "history": [],
                 "last_msg": "경매 시작!",
-                "dd_a": False, "dd_b": False,
-                "bid": {"a": None, "b": None, "dd_a": False, "dd_b": False,
-                         "a_done": False, "b_done": False},
+                "bid_first": "blue",
+                "resolving": False,
+                "bid": {
+                    "turn": "blue",
+                    "a": None, "b": None,
+                    "a_done": False, "b_done": False,
+                    "a_passed": False, "b_passed": False,
+                },
                 "cfg": {
                     "sp":    sp,
                     "tie":   cfg.get("tie", "random"),
                     "timer": int(cfg.get("timer", 30)),
-                    "bluff": bool(cfg.get("bluff", False)),
-                    "dd":    bool(cfg.get("dd", True)),
                 },
             })
             await self._start_timer()
@@ -247,24 +313,33 @@ class Room:
             if self.s["phase"] != "auction":
                 return
             amt = int(data.get("amount", 0))
-            dd  = bool(data.get("use_dd", False))
             b   = self.s["bid"]
 
-            if role == "blue" and not b["a_done"]:
+            if role == "blue" and b["turn"] == "blue" and not b["a_done"]:
                 pts = self.s["team_a"]["points"]
-                amt = max(0, min(amt, pts))
-                b["a"], b["dd_a"], b["a_done"] = amt, dd, True
-            elif role == "red" and not b["b_done"]:
+                amt = max(1, min(amt, pts))
+                b["a"], b["a_done"], b["a_passed"] = amt, True, False
+            elif role == "red" and b["turn"] == "red" and not b["b_done"]:
                 pts = self.s["team_b"]["points"]
-                amt = max(0, min(amt, pts))
-                b["b"], b["dd_b"], b["b_done"] = amt, dd, True
+                amt = max(1, min(amt, pts))
+                b["b"], b["b_done"], b["b_passed"] = amt, True, False
             else:
                 return
 
-            await self._push()
-            if b["a_done"] and b["b_done"]:
-                await asyncio.sleep(1.5)
-                await self._resolve()
+            await self._after_act()
+
+        elif t == "pass_bid":
+            if self.s["phase"] != "auction":
+                return
+            b = self.s["bid"]
+            if role == "blue" and b["turn"] == "blue" and not b["a_done"]:
+                b["a_passed"], b["a_done"], b["a"] = True, True, None
+            elif role == "red" and b["turn"] == "red" and not b["b_done"]:
+                b["b_passed"], b["b_done"], b["b"] = True, True, None
+            else:
+                return
+
+            await self._after_act()
 
         elif t == "trade_toggle":
             pl   = data.get("player")

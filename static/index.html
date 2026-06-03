@@ -171,6 +171,11 @@ function pauseTimer(){
   send(gs?.paused ? 'resume_timer' : 'pause_timer');
 }
 
+function passBid(){
+  if(!confirm('정말 포기하시겠습니까?')) return;
+  send('pass_bid');
+}
+
 function goHome(){
   if(!confirm('홈으로 돌아가면 현재 게임에서 나가집니다. 계속하시겠습니까?')) return;
   if(ws) ws.close();
@@ -347,26 +352,6 @@ function renderSetup(){
             ${[10,15,20,30,45,60].map(v=>`<option ${v===30?'selected':''}>${v}</option>`).join('')}
           </select>
         </div>
-        <div class="col">
-          <label>🎭 블러핑 모드</label>
-          <select id="cfg-bluff">
-            <option value="0">OFF</option>
-            <option value="1">ON</option>
-          </select>
-          <div style="font-size:.75em;color:#bbb;margin-top:4px;line-height:1.4">
-            낙찰 결과에 표시되는 금액이 실제와 ±3pt 다르게 보입니다. 진짜 금액으로 승패가 결정됩니다.
-          </div>
-        </div>
-        <div class="col">
-          <label>💥 더블다운</label>
-          <select id="cfg-dd">
-            <option value="1">ON</option>
-            <option value="0">OFF</option>
-          </select>
-          <div style="font-size:.75em;color:#bbb;margin-top:4px;line-height:1.4">
-            입찰 금액을 2배로 처리하는 특수 기술. 팀당 게임 전체에서 1회만 사용 가능합니다.
-          </div>
-        </div>
       </div>
     </div>
     <div class="card">
@@ -445,8 +430,6 @@ function startGame(){
       sp:    parseInt(A('cfg-sp').value),
       tie:   A('cfg-tie').value,
       timer: parseInt(A('cfg-timer').value),
-      bluff: A('cfg-bluff').value==='1',
-      dd:    A('cfg-dd').value==='1',
     }
   });
 }
@@ -489,6 +472,14 @@ function renderAuction(){
   const pinfo    = (gs.all_players||{})[player] || {tier:'언랭',position:'미정'};
   const rem      = gs.timer ?? gs.cfg?.timer ?? 30;
 
+  const turnTeam   = gs.bid_turn === 'blue' ? '🔵 블루팀' : '🔴 레드팀';
+  const turnColor  = gs.bid_turn === 'blue' ? '#0AC8B9' : '#E91E63';
+  const isMyTurnNow = gs.bid_turn === myRole;
+  const turnLabel  = isMyTurnNow ? '⚡ 당신의 입찰 차례!' : `⏳ ${turnTeam} 입찰 중...`;
+  const turnHtml   = (myRole !== 'spectator') ? `
+  <div style="text-align:center;font-weight:700;font-size:.9em;color:${isMyTurnNow?turnColor:'#aaa'};margin-bottom:4px">
+    ${turnLabel}
+  </div>` : '';
   const timerHtml = `<div id="timer-display">${buildTimerHtml(rem)}</div>`;
 
   const tc = TIER_COLOR[pinfo.tier]||'#888';
@@ -550,118 +541,133 @@ function renderAuction(){
   <div class="auction-grid">
     ${teamA}
     <div>
-      ${timerHtml}${targetHtml}${lastMsg}${bidHtml}${histHtml}
+      ${turnHtml}${timerHtml}${targetHtml}${lastMsg}${bidHtml}${histHtml}
     </div>
     ${teamB}
   </div>`;
 }
 
 function buildBidArea(){
-  const reveal = gs.reveal;
-  const sp     = gs.cfg?.sp || 100;
-  const pa     = gs.team_a?.points ?? sp;
-  const pb     = gs.team_b?.points ?? sp;
+  const sp = gs.cfg?.sp || 100;
+  const pa = gs.team_a?.points ?? sp;
+  const pb = gs.team_b?.points ?? sp;
 
-  // 양쪽 모두 제출 후 공개 순간
-  if(reveal){
+  // ── 양팀 모두 행동 후 공개 ──
+  if(gs.reveal){
     const va  = gs.bid_a_val ?? 0;
     const vb  = gs.bid_b_val ?? 0;
-    const dda = gs.bid_dd_a;
-    const ddb = gs.bid_dd_b;
-    const winner = va > vb ? 'blue' : vb > va ? 'red' : 'tie';
+    const aPassed = gs.bid_a_passed;
+    const bPassed = gs.bid_b_passed;
+    const winner = (aPassed && bPassed) ? 'tie'
+      : aPassed ? 'red' : bPassed ? 'blue'
+      : va > vb ? 'blue' : vb > va ? 'red' : 'tie';
+    const aLabel = aPassed ? '❌ 포기' : `${va}pt`;
+    const bLabel = bPassed ? '❌ 포기' : `${vb}pt`;
     const aExtra = winner==='blue'
       ? 'animation:winner-glow .7s ease forwards;border-color:#00C060;border-width:3px'
-      : winner==='tie' ? '' : 'opacity:.65';
+      : winner==='tie' ? '' : 'opacity:.55';
     const bExtra = winner==='red'
       ? 'animation:winner-glow .7s ease forwards;border-color:#00C060;border-width:3px'
-      : winner==='tie' ? '' : 'opacity:.65';
+      : winner==='tie' ? '' : 'opacity:.55';
     return `
     <div class="bid-area" style="border-color:#C89B3C">
       <div style="text-align:center;color:#aaa;font-size:.85em;margin-bottom:8px">📢 낙찰 결과</div>
       <div class="row" style="align-items:center">
         <div class="bid-reveal blue" style="animation:slide-left .3s ease;${aExtra}">
-          🔵 ${dda?'💥':''}${va}pt${winner==='blue'?' 👑':''}
+          🔵 ${aLabel}${winner==='blue'?' 👑':''}
         </div>
         <div style="display:flex;align-items:center;padding:0 8px;color:#888;font-size:1.1em;font-weight:900;flex-shrink:0">vs</div>
         <div class="bid-reveal red" style="animation:slide-right .3s ease;${bExtra}">
-          🔴 ${ddb?'💥':''}${vb}pt${winner==='red'?' 👑':''}
+          🔴 ${bLabel}${winner==='red'?' 👑':''}
         </div>
       </div>
-      ${winner==='tie'?`<div style="text-align:center;color:#C89B3C;margin-top:8px;font-weight:700;font-size:1em">⚔️ 동점!</div>`:''}
+      ${winner==='tie'?`<div style="text-align:center;color:#C89B3C;margin-top:8px;font-weight:700">⚔️ 동점!</div>`:''}
     </div>`;
   }
 
-  const aDone = gs.bid_a_done;
-  const bDone = gs.bid_b_done;
+  const isBlue   = myRole === 'blue';
+  const isRed    = myRole === 'red';
+  const myPts    = isBlue ? pa : pb;
+  const myDone   = isBlue ? gs.bid_a_done : gs.bid_b_done;
+  const myPassed = isBlue ? gs.bid_a_passed : gs.bid_b_passed;
+  const isMyTurn = gs.bid_turn === myRole;
 
-  if(myRole==='blue'){
+  // 선공팀 행동 결과 박스 (후공 차례일 때 표시)
+  let firstInfoHtml = '';
+  if(gs.first_acted){
+    const ftColor = gs.first_team === 'blue' ? '#0AC8B9' : '#E91E63';
+    const ftLabel = gs.first_team === 'blue' ? '🔵 블루팀' : '🔴 레드팀';
+    if(gs.first_passed){
+      firstInfoHtml = `<div class="bid-status bid-waiting" style="margin-bottom:8px">
+        ${ftLabel} <span style="color:#CF3F3F;font-weight:700">포기</span>
+      </div>`;
+    } else {
+      firstInfoHtml = `<div class="bid-status bid-done" style="margin-bottom:8px">
+        ${ftLabel}: <b style="color:${ftColor};font-size:1.1em">${gs.first_val}pt</b> 입찰
+      </div>`;
+    }
+  }
+
+  // ── 관전자 ──
+  if(myRole === 'spectator'){
+    const aText = gs.bid_a_done
+      ? (gs.bid_a_passed ? '❌ 포기' : '✅ 입찰 완료')
+      : (gs.bid_turn==='blue' ? '⌛ 결정 중...' : '⏳ 대기');
+    const bText = gs.bid_b_done
+      ? (gs.bid_b_passed ? '❌ 포기' : '✅ 입찰 완료')
+      : (gs.bid_turn==='red' ? '⌛ 결정 중...' : '⏳ 대기');
     return `
     <div class="bid-area">
-      <div class="row" style="margin-bottom:8px">
-        <div class="col">
-          ${aDone
-            ? `<div class="bid-status bid-done">✅ 내 입찰 완료</div>`
-            : buildMyBidInput('blue', pa)}
-        </div>
-        <div class="col" style="display:flex;align-items:center">
-          <div class="bid-status ${bDone?'bid-done':'bid-waiting'}" style="width:100%;text-align:center">
-            ${bDone?'✅ 레드팀 완료':'⏳ 레드팀 대기 중'}
-          </div>
-        </div>
+      <div class="row">
+        <div class="col"><div class="bid-status ${gs.bid_a_done?'bid-done':'bid-waiting'}">${aText}</div></div>
+        <div class="col"><div class="bid-status ${gs.bid_b_done?'bid-done':'bid-waiting'}">${bText}</div></div>
       </div>
     </div>`;
   }
 
-  if(myRole==='red'){
+  // ── 내 차례 ──
+  if(isMyTurn && !myDone){
+    const color = isBlue ? '#0AC8B9' : '#E91E63';
     return `
     <div class="bid-area">
-      <div class="row" style="margin-bottom:8px">
-        <div class="col" style="display:flex;align-items:center">
-          <div class="bid-status ${aDone?'bid-done':'bid-waiting'}" style="width:100%;text-align:center">
-            ${aDone?'✅ 블루팀 완료':'⏳ 블루팀 대기 중'}
-          </div>
-        </div>
-        <div class="col">
-          ${bDone
-            ? `<div class="bid-status bid-done">✅ 내 입찰 완료</div>`
-            : buildMyBidInput('red', pb)}
-        </div>
+      ${firstInfoHtml}
+      <div style="color:${color};font-size:.9em;font-weight:700;text-align:center;margin-bottom:8px">
+        ⚡ 당신의 차례!
       </div>
+      ${buildMyBidInput(isBlue?'blue':'red', myPts)}
+      <button onclick="passBid()"
+        style="margin-top:6px;border-color:#555;color:#888;font-size:.9em">
+        ❌ 포기하기
+      </button>
     </div>`;
   }
 
-  // spectator
+  // ── 내가 이미 행동함 ──
+  if(myDone){
+    const color   = isBlue ? '#0AC8B9' : '#E91E63';
+    const myLabel = isBlue ? '🔵 블루팀' : '🔴 레드팀';
+    const otherLabel = isBlue ? '🔴 레드팀' : '🔵 블루팀';
+    const myStatus = myPassed
+      ? `${myLabel}: <span style="color:#CF3F3F">포기</span>`
+      : `${myLabel}: <b style="color:${color}">${gs.my_val}pt</b> 입찰 완료`;
+    return `
+    <div class="bid-area">
+      <div class="bid-status bid-done" style="margin-bottom:8px">${myStatus}</div>
+      <div class="bid-status bid-waiting">⏳ ${otherLabel} 결정 중...</div>
+    </div>`;
+  }
+
+  // ── 상대 차례 (나는 대기) ──
+  const waitingFor = gs.bid_turn === 'blue' ? '🔵 블루팀' : '🔴 레드팀';
   return `
   <div class="bid-area">
-    <div class="row">
-      <div class="col">
-        <div class="bid-status ${aDone?'bid-done':'bid-waiting'}">
-          ${aDone?'✅ 블루팀 입찰 완료':'⏳ 블루팀 대기 중'}
-        </div>
-      </div>
-      <div class="col">
-        <div class="bid-status ${bDone?'bid-done':'bid-waiting'}">
-          ${bDone?'✅ 레드팀 입찰 완료':'⏳ 레드팀 대기 중'}
-        </div>
-      </div>
-    </div>
+    <div class="bid-status bid-waiting">⏳ ${waitingFor} 입찰 중...</div>
   </div>`;
 }
 
 function buildMyBidInput(team, pts){
-  const color     = team==='blue'?'#0AC8B9':'#E91E63';
-  const ddEnabled = gs.cfg?.dd !== false;
-  const ddUsed    = team==='blue' ? gs.dd_a : gs.dd_b;
-  const myVal     = gs.my_val;
-  const myDd      = gs.my_dd;
-  const ddHtml = ddEnabled ? `
-    <label style="margin-top:6px;display:flex;align-items:center;gap:6px;cursor:pointer">
-      <input type="checkbox" id="dd-chk" ${ddUsed?'disabled':''} ${myDd?'checked':''}
-        style="width:auto;margin:0">
-      <span style="color:${ddUsed?'#555':'#C89B3C'};font-size:.9em">
-        💥 더블다운 ${ddUsed?'(사용됨)':'사용!'}
-      </span>
-    </label>` : '';
+  const color = team==='blue'?'#0AC8B9':'#E91E63';
+  const myVal = gs.my_val;
   return `
   <div>
     <div style="color:${color};font-size:.85em;margin-bottom:4px">잔여: ${pts}G</div>
@@ -669,7 +675,6 @@ function buildMyBidInput(team, pts){
       style="color:${color};border-color:${color};text-align:center;font-size:1.1em"
       ${myVal!==undefined&&myVal!==null?`value="${myVal}"`:''}
     >
-    ${ddHtml}
     <button onclick="submitBid()" style="margin-top:8px;border-color:${color};color:${color}">
       ⚡ 입찰 확정
     </button>
@@ -684,7 +689,7 @@ function submitBid(){
   const pts = myRole==='blue' ? (gs?.team_a?.points ?? 0) : (gs?.team_b?.points ?? 0);
   if(isNaN(amt) || amt < 1){ alert('1 이상의 숫자를 입력하세요.'); return; }
   if(amt > pts){ alert(`잔여 포인트(${pts}G)를 초과할 수 없습니다.`); return; }
-  send('submit_bid',{amount:amt, use_dd: dd ? dd.checked : false});
+  send('submit_bid',{amount:amt});
 }
 
 function buildTeamPanel(team){
@@ -696,8 +701,6 @@ function buildTeamPanel(team){
   const pts     = t?.points ?? sp;
   const spent   = sp - pts;
   const members = t?.members || [];
-  const ddUsed  = team==='a' ? gs.dd_a : gs.dd_b;
-
   let cards='';
   for(let i=0;i<5;i++){
     if(i<members.length){
@@ -729,9 +732,6 @@ function buildTeamPanel(team){
       <div class="val" style="color:${color}">${pts}G</div>
       ${spent>0?`<div style="font-size:.75em;color:#aaa">-${spent} 소모</div>`:''}
     </div>
-    ${gs.cfg?.dd !== false ? `<div style="font-size:.8em;color:${ddUsed?'#555':'#C89B3C'};text-align:center;margin-bottom:6px">
-      ${ddUsed?'💥 더블다운 사용됨':'💥 더블다운 대기 중'}
-    </div>` : ''}
     ${cards}
   </div>`;
 }
