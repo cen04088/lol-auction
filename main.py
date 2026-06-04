@@ -17,6 +17,7 @@ class Room:
         self.ws: dict[str, WebSocket] = {}   # role → WebSocket
         self.s    = self._fresh()
         self.tick: asyncio.Task | None = None
+        self.last_activity = time.time()
 
     # ── 상태 초기화 ──────────────────────────────────────────────────────────
     def _fresh(self):
@@ -231,6 +232,7 @@ class Room:
 
     # ── 메시지 처리 ──────────────────────────────────────────────────────────
     async def handle(self, role: str, data: dict):
+        self.last_activity = time.time()
         t = data.get("type")
 
         if t == "start_game":
@@ -288,14 +290,22 @@ class Room:
 
             amt = int(data.get("amount", 0))
             if role == "blue":
-                pts = self.s["team_a"]["points"]
-                amt = max(1, min(amt, pts))
+                pts     = self.s["team_a"]["points"]
+                opp_bid = b["b"]
+                min_bid = (opp_bid + 1) if opp_bid is not None else 1
+                if amt < min_bid or amt > pts:
+                    await self._emit(role, {"type": "error", "msg": f"입찰액은 {min_bid}~{pts}pt 범위여야 합니다."})
+                    return
                 b["a"] = amt
                 opp_passed = b["b_passed"]
                 opp_role   = "red"
             else:
-                pts = self.s["team_b"]["points"]
-                amt = max(1, min(amt, pts))
+                pts     = self.s["team_b"]["points"]
+                opp_bid = b["a"]
+                min_bid = (opp_bid + 1) if opp_bid is not None else 1
+                if amt < min_bid or amt > pts:
+                    await self._emit(role, {"type": "error", "msg": f"입찰액은 {min_bid}~{pts}pt 범위여야 합니다."})
+                    return
                 b["b"] = amt
                 opp_passed = b["a_passed"]
                 opp_role   = "blue"
@@ -373,6 +383,22 @@ class Room:
 
 # ── 방 저장소 ──────────────────────────────────────────────────────────────────
 rooms: dict[str, Room] = {}
+
+
+async def _cleanup_rooms():
+    while True:
+        await asyncio.sleep(300)
+        now = time.time()
+        expired = [rid for rid, rm in list(rooms.items())
+                   if not rm.ws and now - rm.last_activity > 3600]
+        for rid in expired:
+            rm = rooms.pop(rid, None)
+            if rm and rm.tick and not rm.tick.done():
+                rm.tick.cancel()
+
+@app.on_event("startup")
+async def _startup():
+    asyncio.create_task(_cleanup_rooms())
 
 
 # ── API ───────────────────────────────────────────────────────────────────────

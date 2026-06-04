@@ -143,8 +143,12 @@ function _restoreUI(){
         const len = el.value.length;
         el.setSelectionRange(len, len);
       }
+      return;
     }
   }
+  // 내 차례가 처음 시작될 때 입찰 입력창 자동 포커스
+  const bidInp = document.getElementById('bid-input');
+  if(bidInp && gs?.bid_turn === myRole && !gs?.resolving) bidInp.focus();
 }
 
 const A = id => document.getElementById(id);
@@ -178,10 +182,40 @@ function passBid(){
 
 function goHome(){
   if(!confirm('홈으로 돌아가면 현재 게임에서 나가집니다. 계속하시겠습니까?')) return;
+  if(_reconn.timer){ clearTimeout(_reconn.timer); _reconn.timer=null; }
+  _reconn = {active:false, attempts:0, timer:null};
+  document.getElementById('reconn-banner')?.remove();
   if(ws) ws.close();
   ws=null; gs=null; myRole=null; myRoom=null;
   _ui={bid:'', dd:false, details:{}, focused:null};
   renderHome();
+}
+
+// ── localStorage 설정 저장/복원 ──────────────────────────────────────────
+function _saveSetup(){
+  try{
+    const d={cfg:{},players:[]};
+    ['cfg-sp','cfg-tie','cfg-timer'].forEach(id=>{const e=A(id);if(e)d.cfg[id]=e.value;});
+    for(let i=0;i<10;i++) d.players.push({
+      name:(A(`pn${i}`)?.value||''),
+      tier:(A(`pt${i}`)?.value||'언랭'),
+      pos:(A(`pp${i}`)?.value||'미정'),
+    });
+    localStorage.setItem('lol_setup',JSON.stringify(d));
+  }catch(e){}
+}
+function _loadSetup(){
+  try{
+    const raw=localStorage.getItem('lol_setup');
+    if(!raw)return;
+    const d=JSON.parse(raw);
+    if(d.cfg) Object.entries(d.cfg).forEach(([id,v])=>{const e=A(id);if(e)e.value=v;});
+    if(d.players) d.players.forEach((p,i)=>{
+      if(A(`pn${i}`))A(`pn${i}`).value=p.name||'';
+      if(A(`pt${i}`))A(`pt${i}`).value=p.tier||'언랭';
+      if(A(`pp${i}`))A(`pp${i}`).value=p.pos||'미정';
+    });
+  }catch(e){}
 }
 
 // ── 연결 ──────────────────────────────────────────────────────────────────
@@ -199,28 +233,65 @@ function joinRoom(){
   connect();
 }
 
+let _reconn = {active:false, attempts:0, timer:null};
+
+function _onWsMsg(e){
+  const msg = JSON.parse(e.data);
+  if(msg.type==='state'){
+    if(msg.timer_only){
+      gs.timer = msg.d.timer;
+      const tEl = document.getElementById('timer-display');
+      if(tEl) tEl.innerHTML = buildTimerHtml(gs.timer);
+      return;
+    }
+    document.getElementById('reconn-banner')?.remove();
+    _reconn = {active:false, attempts:0, timer:null};
+    _saveUI();
+    gs=msg.d; myRole=msg.role;
+    render();
+    _restoreUI();
+  }
+  else if(msg.type==='error'){ alert(msg.msg); ws=null; gs=null; renderHome(); }
+}
+
+function _onWsClose(){
+  if(gs && myRoom && myRole && myRole !== 'spectator') _scheduleReconnect();
+  else { gs=null; renderHome(); }
+}
+
+function _scheduleReconnect(){
+  if(_reconn.active) return;
+  _reconn.active = true;
+  _reconn.attempts = 0;
+  _doReconnect();
+}
+
+function _doReconnect(){
+  if(_reconn.timer){ clearTimeout(_reconn.timer); _reconn.timer=null; }
+  _reconn.attempts++;
+  if(_reconn.attempts > 5){
+    document.getElementById('reconn-banner')?.remove();
+    _reconn = {active:false, attempts:0, timer:null};
+    gs=null; renderHome(); return;
+  }
+  let banner = document.getElementById('reconn-banner');
+  if(!banner){
+    banner = document.createElement('div');
+    banner.id = 'reconn-banner';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:rgba(200,155,60,.12);border-bottom:1px solid #C89B3C44;color:#C89B3C;text-align:center;padding:7px;font-weight:700;z-index:9999;font-size:.88em';
+    document.body.prepend(banner);
+  }
+  const delay = Math.min(1500 * _reconn.attempts, 8000);
+  banner.textContent = `🔄 연결 끊김 — ${Math.round(delay/1000)}초 후 재연결 시도 (${_reconn.attempts}/5)`;
+  _reconn.timer = setTimeout(()=>{ _reconn.timer=null; connect(); }, delay);
+}
+
 function connect(){
   const proto = location.protocol==='https:' ? 'wss:' : 'ws:';
   ws = new WebSocket(`${proto}//${location.host}/ws/${myRoom}/${myRole}`);
-  ws.onmessage = e => {
-    const msg = JSON.parse(e.data);
-    if(msg.type==='state'){
-      if(msg.timer_only){
-        // 타이머만 변경 → 입력 폼 그대로, timer-display만 갱신
-        gs.timer = msg.d.timer;
-        const tEl = document.getElementById('timer-display');
-        if(tEl) tEl.innerHTML = buildTimerHtml(gs.timer);
-        return;
-      }
-      _saveUI();
-      gs=msg.d; myRole=msg.role;
-      render();
-      _restoreUI();
-    }
-    else if(msg.type==='error'){ alert(msg.msg); ws=null; gs=null; renderHome(); }
-  };
-  ws.onclose = () => { if(gs){ gs=null; renderHome(); } };
-  ws.onerror = () => { alert('연결 실패'); ws=null; gs=null; renderHome(); };
+  ws.onmessage = _onWsMsg;
+  ws.onclose   = _onWsClose;
+  ws.onerror   = () => {};
 }
 
 // ── 렌더 라우팅 ───────────────────────────────────────────────────────────
@@ -382,10 +453,16 @@ function renderSetup(){
     </div>
   </div>`;
 
-  // 이름 입력 감시
+  // 이름 입력 감시 + 자동 저장
   for(let i=0;i<10;i++){
     A(`pn${i}`).addEventListener('input', updateLeaders);
+    A(`pn${i}`).addEventListener('input', _saveSetup);
+    A(`pt${i}`).addEventListener('change', _saveSetup);
+    A(`pp${i}`).addEventListener('change', _saveSetup);
   }
+  ['cfg-sp','cfg-tie','cfg-timer'].forEach(id=>A(id)?.addEventListener('change',_saveSetup));
+  _loadSetup();
+  updateLeaders();
 }
 
 function updateLeaders(){
@@ -624,11 +701,16 @@ function buildBidArea(){
 }
 
 function buildMyBidInput(team, pts){
-  const color = team==='blue'?'#0AC8B9':'#E91E63';
+  const color  = team==='blue'?'#0AC8B9':'#E91E63';
+  const oppBid = team==='blue' ? gs.bid_b : gs.bid_a;
+  const minBid = (oppBid !== null && oppBid !== undefined) ? oppBid+1 : 1;
+  const hint   = (oppBid !== null && oppBid !== undefined)
+    ? ` &nbsp;·&nbsp; 최소: <b style="color:#fff">${minBid}pt</b>` : '';
   return `
   <div>
-    <div style="color:${color};font-size:.85em;margin-bottom:4px">잔여: ${pts}G</div>
-    <input id="bid-input" type="number" min="1" max="${pts}" placeholder="1 ~ ${pts}"
+    <div style="color:${color};font-size:.85em;margin-bottom:4px">잔여: ${pts}G${hint}</div>
+    <input id="bid-input" type="number" min="${minBid}" max="${pts}" placeholder="${minBid} ~ ${pts}"
+      onkeydown="if(event.key==='Enter')submitBid()"
       style="color:${color};border-color:${color};text-align:center;font-size:1.1em">
     <button onclick="submitBid()" style="margin-top:8px;border-color:${color};color:${color}">
       ⚡ 입찰 확정
@@ -638,11 +720,12 @@ function buildMyBidInput(team, pts){
 
 function submitBid(){
   const input = A('bid-input');
-  const dd    = A('dd-chk');
   if(!input) return;
-  const amt = parseInt(input.value);
-  const pts = myRole==='blue' ? (gs?.team_a?.points ?? 0) : (gs?.team_b?.points ?? 0);
-  if(isNaN(amt) || amt < 1){ alert('1 이상의 숫자를 입력하세요.'); return; }
+  const amt    = parseInt(input.value);
+  const pts    = myRole==='blue' ? (gs?.team_a?.points ?? 0) : (gs?.team_b?.points ?? 0);
+  const oppBid = myRole==='blue' ? gs?.bid_b : gs?.bid_a;
+  const minBid = (oppBid !== null && oppBid !== undefined) ? oppBid+1 : 1;
+  if(isNaN(amt) || amt < minBid){ alert(`${minBid}pt 이상 입찰해야 합니다.`); return; }
   if(amt > pts){ alert(`잔여 포인트(${pts}G)를 초과할 수 없습니다.`); return; }
   send('submit_bid',{amount:amt});
 }
@@ -685,6 +768,9 @@ function buildTeamPanel(team){
     <div class="metric">
       <div class="lbl">GOLD</div>
       <div class="val" style="color:${color}">${pts}G</div>
+      <div style="background:#1a1a2e;border-radius:3px;height:6px;margin:5px 0 2px;overflow:hidden">
+        <div style="width:${Math.round(100*pts/sp)}%;height:100%;background:${color};border-radius:3px;transition:width .6s"></div>
+      </div>
       ${spent>0?`<div style="font-size:.75em;color:#aaa">-${spent} 소모</div>`:''}
     </div>
     ${cards}
