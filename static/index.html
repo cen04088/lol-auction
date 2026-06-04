@@ -551,33 +551,31 @@ function buildBidArea(){
   const sp = gs.cfg?.sp || 100;
   const pa = gs.team_a?.points ?? sp;
   const pb = gs.team_b?.points ?? sp;
+  const aPassed = gs.bid_a_passed;
+  const bPassed = gs.bid_b_passed;
+  const aVal    = gs.bid_a;   // null = 미입찰
+  const bVal    = gs.bid_b;
 
-  // ── 양팀 모두 행동 후 공개 ──
-  if(gs.reveal){
-    const va  = gs.bid_a_val ?? 0;
-    const vb  = gs.bid_b_val ?? 0;
-    const aPassed = gs.bid_a_passed;
-    const bPassed = gs.bid_b_passed;
+  // 현재 입찰 현황 (항상 표시)
+  const aLabel = aPassed ? '❌ 포기' : aVal !== null ? `${aVal}pt` : '-';
+  const bLabel = bPassed ? '❌ 포기' : bVal !== null ? `${bVal}pt` : '-';
+
+  // ── 낙찰 결과 표시 중 ──
+  if(gs.resolving){
     const winner = (aPassed && bPassed) ? 'tie'
       : aPassed ? 'red' : bPassed ? 'blue'
-      : va > vb ? 'blue' : vb > va ? 'red' : 'tie';
-    const aLabel = aPassed ? '❌ 포기' : `${va}pt`;
-    const bLabel = bPassed ? '❌ 포기' : `${vb}pt`;
-    const aExtra = winner==='blue'
-      ? 'animation:winner-glow .7s ease forwards;border-color:#00C060;border-width:3px'
-      : winner==='tie' ? '' : 'opacity:.55';
-    const bExtra = winner==='red'
-      ? 'animation:winner-glow .7s ease forwards;border-color:#00C060;border-width:3px'
-      : winner==='tie' ? '' : 'opacity:.55';
+      : (aVal??0) > (bVal??0) ? 'blue' : (bVal??0) > (aVal??0) ? 'red' : 'tie';
+    const aGlow = winner==='blue'?'animation:winner-glow .7s ease forwards;border-color:#00C060;border-width:3px':winner==='red'?'opacity:.45':'';
+    const bGlow = winner==='red'?'animation:winner-glow .7s ease forwards;border-color:#00C060;border-width:3px':winner==='blue'?'opacity:.45':'';
     return `
     <div class="bid-area" style="border-color:#C89B3C">
       <div style="text-align:center;color:#aaa;font-size:.85em;margin-bottom:8px">📢 낙찰 결과</div>
       <div class="row" style="align-items:center">
-        <div class="bid-reveal blue" style="animation:slide-left .3s ease;${aExtra}">
+        <div class="bid-reveal blue" style="animation:slide-left .3s ease;${aGlow}">
           🔵 ${aLabel}${winner==='blue'?' 👑':''}
         </div>
         <div style="display:flex;align-items:center;padding:0 8px;color:#888;font-size:1.1em;font-weight:900;flex-shrink:0">vs</div>
-        <div class="bid-reveal red" style="animation:slide-right .3s ease;${bExtra}">
+        <div class="bid-reveal red" style="animation:slide-right .3s ease;${bGlow}">
           🔴 ${bLabel}${winner==='red'?' 👑':''}
         </div>
       </div>
@@ -585,96 +583,53 @@ function buildBidArea(){
     </div>`;
   }
 
-  const isBlue   = myRole === 'blue';
-  const isRed    = myRole === 'red';
-  const myPts    = isBlue ? pa : pb;
-  const myDone   = isBlue ? gs.bid_a_done : gs.bid_b_done;
-  const myPassed = isBlue ? gs.bid_a_passed : gs.bid_b_passed;
-  const isMyTurn = gs.bid_turn === myRole;
+  // 현황 바 (입찰 진행 중 항상 표시)
+  const standingsHtml = `
+  <div class="row" style="margin-bottom:8px;align-items:center">
+    <div class="bid-reveal blue" style="font-size:1em;padding:8px">🔵 ${aLabel}</div>
+    <div style="display:flex;align-items:center;padding:0 6px;color:#555;font-weight:900;flex-shrink:0">vs</div>
+    <div class="bid-reveal red" style="font-size:1em;padding:8px">🔴 ${bLabel}</div>
+  </div>`;
 
-  // 선공팀 행동 결과 박스 (후공 차례일 때 표시)
-  let firstInfoHtml = '';
-  if(gs.first_acted){
-    const ftColor = gs.first_team === 'blue' ? '#0AC8B9' : '#E91E63';
-    const ftLabel = gs.first_team === 'blue' ? '🔵 블루팀' : '🔴 레드팀';
-    if(gs.first_passed){
-      firstInfoHtml = `<div class="bid-status bid-waiting" style="margin-bottom:8px">
-        ${ftLabel} <span style="color:#CF3F3F;font-weight:700">포기</span>
-      </div>`;
-    } else {
-      firstInfoHtml = `<div class="bid-status bid-done" style="margin-bottom:8px">
-        ${ftLabel}: <b style="color:${ftColor};font-size:1.1em">${gs.first_val}pt</b> 입찰
-      </div>`;
-    }
-  }
+  const isMyTurn = gs.bid_turn === myRole;
+  const myPts    = myRole==='blue' ? pa : pb;
 
   // ── 관전자 ──
   if(myRole === 'spectator'){
-    const aText = gs.bid_a_done
-      ? (gs.bid_a_passed ? '❌ 포기' : '✅ 입찰 완료')
-      : (gs.bid_turn==='blue' ? '⌛ 결정 중...' : '⏳ 대기');
-    const bText = gs.bid_b_done
-      ? (gs.bid_b_passed ? '❌ 포기' : '✅ 입찰 완료')
-      : (gs.bid_turn==='red' ? '⌛ 결정 중...' : '⏳ 대기');
-    return `
-    <div class="bid-area">
-      <div class="row">
-        <div class="col"><div class="bid-status ${gs.bid_a_done?'bid-done':'bid-waiting'}">${aText}</div></div>
-        <div class="col"><div class="bid-status ${gs.bid_b_done?'bid-done':'bid-waiting'}">${bText}</div></div>
-      </div>
+    const who = gs.bid_turn==='blue'?'🔵 블루팀':'🔴 레드팀';
+    return `<div class="bid-area">${standingsHtml}
+      <div class="bid-status bid-waiting">⏳ ${who} 결정 중...</div>
     </div>`;
   }
 
   // ── 내 차례 ──
-  if(isMyTurn && !myDone){
-    const color = isBlue ? '#0AC8B9' : '#E91E63';
+  if(isMyTurn){
+    const color = myRole==='blue'?'#0AC8B9':'#E91E63';
     return `
     <div class="bid-area">
-      ${firstInfoHtml}
-      <div style="color:${color};font-size:.9em;font-weight:700;text-align:center;margin-bottom:8px">
-        ⚡ 당신의 차례!
-      </div>
-      ${buildMyBidInput(isBlue?'blue':'red', myPts)}
-      <button onclick="passBid()"
-        style="margin-top:6px;border-color:#555;color:#888;font-size:.9em">
-        ❌ 포기하기
-      </button>
+      ${standingsHtml}
+      <div style="color:${color};font-size:.9em;font-weight:700;text-align:center;margin-bottom:6px">⚡ 당신의 차례!</div>
+      ${buildMyBidInput(myRole, myPts)}
+      <button onclick="passBid()" style="margin-top:6px;border-color:#555;color:#888;font-size:.9em">❌ 포기하기</button>
     </div>`;
   }
 
-  // ── 내가 이미 행동함 ──
-  if(myDone){
-    const color   = isBlue ? '#0AC8B9' : '#E91E63';
-    const myLabel = isBlue ? '🔵 블루팀' : '🔴 레드팀';
-    const otherLabel = isBlue ? '🔴 레드팀' : '🔵 블루팀';
-    const myStatus = myPassed
-      ? `${myLabel}: <span style="color:#CF3F3F">포기</span>`
-      : `${myLabel}: <b style="color:${color}">${gs.my_val}pt</b> 입찰 완료`;
-    return `
-    <div class="bid-area">
-      <div class="bid-status bid-done" style="margin-bottom:8px">${myStatus}</div>
-      <div class="bid-status bid-waiting">⏳ ${otherLabel} 결정 중...</div>
-    </div>`;
-  }
-
-  // ── 상대 차례 (나는 대기) ──
-  const waitingFor = gs.bid_turn === 'blue' ? '🔵 블루팀' : '🔴 레드팀';
+  // ── 상대 차례 ──
+  const waitFor = gs.bid_turn==='blue'?'🔵 블루팀':'🔴 레드팀';
   return `
   <div class="bid-area">
-    <div class="bid-status bid-waiting">⏳ ${waitingFor} 입찰 중...</div>
+    ${standingsHtml}
+    <div class="bid-status bid-waiting">⏳ ${waitFor} 결정 중...</div>
   </div>`;
 }
 
 function buildMyBidInput(team, pts){
   const color = team==='blue'?'#0AC8B9':'#E91E63';
-  const myVal = gs.my_val;
   return `
   <div>
     <div style="color:${color};font-size:.85em;margin-bottom:4px">잔여: ${pts}G</div>
     <input id="bid-input" type="number" min="1" max="${pts}" placeholder="1 ~ ${pts}"
-      style="color:${color};border-color:${color};text-align:center;font-size:1.1em"
-      ${myVal!==undefined&&myVal!==null?`value="${myVal}"`:''}
-    >
+      style="color:${color};border-color:${color};text-align:center;font-size:1.1em">
     <button onclick="submitBid()" style="margin-top:8px;border-color:${color};color:${color}">
       ⚡ 입찰 확정
     </button>
