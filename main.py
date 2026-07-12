@@ -1,9 +1,14 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-import asyncio, json, random, string, time
+import asyncio, json, logging, os, random, string, time
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+logger = logging.getLogger("lol_auction")
 
 app = FastAPI()
+
+STATE_FILE = os.environ.get("STATE_FILE", "rooms_state.json")
 
 # ── 유틸 ──────────────────────────────────────────────────────────────────────
 def gen_id():
@@ -54,8 +59,8 @@ class Room:
         if ws:
             try:
                 await ws.send_text(json.dumps(msg, ensure_ascii=False))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("room=%s role=%s emit failed: %s", self.id, role, e)
 
     def _view(self, role: str) -> dict:
         """공개 번갈아 입찰 — 양팀 입찰액 항상 공개"""
@@ -77,6 +82,8 @@ class Room:
             if timer_only:
                 msg["timer_only"] = True
             await self._emit(role, msg)
+        if not timer_only:
+            _save_state()
 
     # ── 타이머 ───────────────────────────────────────────────────────────────
     def _rem(self) -> int:
@@ -288,7 +295,11 @@ class Room:
             if (role == "blue" and b["a_passed"]) or (role == "red" and b["b_passed"]):
                 return
 
-            amt = int(data.get("amount", 0))
+            try:
+                amt = int(data.get("amount", 0))
+            except (TypeError, ValueError):
+                await self._emit(role, {"type": "error", "msg": "입찰액은 숫자여야 합니다."})
+                return
             if role == "blue":
                 pts     = self.s["team_a"]["points"]
                 opp_bid = b["b"]
@@ -331,6 +342,8 @@ class Room:
         elif t == "trade_toggle":
             pl   = data.get("player")
             team = data.get("team")
+            if team not in ("a", "b"):
+                return
             sel  = self.s[f"sel_{team}"]
             if pl in sel:
                 sel.remove(pl)
@@ -353,8 +366,12 @@ class Room:
                 return
             ma = self.s["team_a"]["members"]
             mb = self.s["team_b"]["members"]
-            ia = sorted([ma.index(n) for n in sa])
-            ib = sorted([mb.index(n) for n in sb])
+            try:
+                ia = sorted([ma.index(n) for n in sa])
+                ib = sorted([mb.index(n) for n in sb])
+            except ValueError:
+                logger.warning("room=%s trade_confirm: stale selection", self.id)
+                return
             va = [ma[i] for i in ia]
             vb = [mb[i] for i in ib]
             for i, v in zip(ia, vb): ma[i] = v
@@ -372,6 +389,8 @@ class Room:
             if role not in ("blue", "red"): return
             self.s["t0"]     = time.time()   # 해제 시 최대 시간부터 재시작
             self.s["paused"] = False
+            if not self.tick or self.tick.done():   # 재시작 복구 등으로 ticker가 없을 수 있음
+                self.tick = asyncio.create_task(self._ticker())
             await self._push()
 
         elif t == "reset":
@@ -385,6 +404,48 @@ class Room:
 rooms: dict[str, Room] = {}
 
 
+def _save_state():
+    """방 상태 스냅샷 저장 (서버 프로세스 재시작 시 복구용, 최소 구현).
+    디스크가 영구적이지 않은 환경(예: 컨테이너 재배포)에서는 살아남지 않는다."""
+    try:
+        data = {
+            rid: {"s": rm.s, "last_activity": rm.last_activity}
+            for rid, rm in rooms.items()
+        }
+        tmp = STATE_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False)
+        os.replace(tmp, STATE_FILE)
+    except Exception as e:
+        logger.warning("state save failed: %s", e)
+
+
+def _load_state():
+    """이전 스냅샷 복구. 경매 진행 중이던 방은 안전하게 일시정지 + 현재 라운드 초기화."""
+    if not os.path.exists(STATE_FILE):
+        return
+    try:
+        with open(STATE_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        for rid, saved in data.items():
+            rm = Room(rid)
+            rm.s = saved["s"]
+            rm.last_activity = saved.get("last_activity", time.time())
+            if rm.s.get("phase") == "auction":
+                rm.s["paused"]     = True
+                rm.s["paused_rem"] = rm.s["cfg"]["timer"]
+                rm.s["resolving"]  = False
+                rm.s["bid"] = {
+                    "turn": rm.s.get("bid_first", "blue"),
+                    "a": None, "b": None,
+                    "a_passed": False, "b_passed": False,
+                }
+            rooms[rid] = rm
+        logger.info("restored %d room(s) from %s", len(rooms), STATE_FILE)
+    except Exception as e:
+        logger.warning("state load failed: %s", e)
+
+
 async def _cleanup_rooms():
     while True:
         await asyncio.sleep(300)
@@ -395,9 +456,13 @@ async def _cleanup_rooms():
             rm = rooms.pop(rid, None)
             if rm and rm.tick and not rm.tick.done():
                 rm.tick.cancel()
+        if expired:
+            logger.info("cleaned up %d expired room(s): %s", len(expired), expired)
+            _save_state()
 
 @app.on_event("startup")
 async def _startup():
+    _load_state()
     asyncio.create_task(_cleanup_rooms())
 
 
@@ -408,6 +473,8 @@ async def create_room():
     while rid in rooms:
         rid = gen_id()
     rooms[rid] = Room(rid)
+    logger.info("room=%s created", rid)
+    _save_state()
     return {"room_id": rid}
 
 
@@ -438,9 +505,12 @@ async def ws_endpoint(ws: WebSocket, room_id: str, role: str):
 
     try:
         while True:
-            raw  = await ws.receive_text()
-            data = json.loads(raw)
-            await room.handle(role, data)
+            raw = await ws.receive_text()
+            try:
+                data = json.loads(raw)
+                await room.handle(role, data)
+            except Exception as e:
+                logger.warning("room=%s role=%s message handling failed: %s", room_id, role, e)
     except WebSocketDisconnect:
         room.ws.pop(role, None)
         await room._push()
@@ -448,6 +518,8 @@ async def ws_endpoint(ws: WebSocket, room_id: str, role: str):
             if room.tick and not room.tick.done():
                 room.tick.cancel()
             rooms.pop(room_id, None)
+            logger.info("room=%s closed (empty)", room_id)
+            _save_state()
 
 
 @app.get("/")

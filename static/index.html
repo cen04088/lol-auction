@@ -3,102 +3,131 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>⚔️ 롤 내전 경매</title>
+<title>롤 내전 경매</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',sans-serif;background:linear-gradient(180deg,#091428,#0A0A0C);
-  color:#C89B3C;min-height:100vh;padding:10px}
-h1{text-align:center;padding:16px 0 8px;font-size:1.6em;text-shadow:0 0 10px rgba(200,155,60,.5)}
-h2{color:#C89B3C;margin-bottom:12px;font-size:1.2em}
-h3{color:#C89B3C;margin-bottom:8px;font-size:1em}
-button{background:#1E2328;color:#C89B3C;border:2px solid #C89B3C;padding:10px 18px;
-  border-radius:6px;font-size:.95em;font-weight:700;cursor:pointer;transition:.2s;width:100%;margin:3px 0}
-button:hover{background:#C89B3C;color:#1E2328}
-button:disabled{opacity:.4;cursor:not-allowed;background:#1E2328;color:#555;border-color:#555}
-input,select{background:#0d1b2a;color:#C89B3C;border:1px solid #C89B3C;padding:8px 12px;
-  border-radius:5px;font-size:.95em;width:100%;margin:3px 0}
-input::placeholder{color:#555}
-label{color:#C89B3C;font-size:.9em;font-weight:600;display:block;margin:6px 0 2px}
-.card{background:rgba(1,10,19,.8);border:1px solid #C89B3C;border-radius:10px;padding:16px;margin:8px 0}
+html,body{min-height:100%}
+body{font-family:-apple-system,'Segoe UI',sans-serif;min-height:100vh;padding:16px;line-height:1.5;transition:background .25s}
+h1,h3{margin-bottom:10px}
+button{cursor:pointer;font-weight:700;border:none;width:100%;margin:3px 0;padding:12px 16px;font-size:.95em;transition:.18s ease}
+button:disabled{opacity:.4;cursor:not-allowed}
+input,select{width:100%;margin:3px 0;padding:9px 12px;font-size:.95em;font-family:inherit;border-radius:2px}
+input::placeholder{opacity:.45}
+label{font-size:.72em;font-weight:700;display:block;margin:10px 0 4px;text-transform:uppercase;letter-spacing:.08em}
 .row{display:flex;gap:8px}
 .col{flex:1}
-.blue{color:#0AC8B9}
-.red{color:#E91E63}
-.gold{color:#C89B3C}
-.gray{color:#aaa}
-.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.8em;font-weight:700}
-.tag-blue{border:1px solid #0AC8B9;color:#0AC8B9}
-.tag-red{border:1px solid #E91E63;color:#E91E63}
-.tag-gold{border:1px solid #C89B3C;color:#C89B3C}
-.tag-gray{border:1px solid #555;color:#555}
-/* Player card */
-.pcard{display:flex;align-items:center;justify-content:space-between;
-  padding:12px 14px;border-radius:6px;margin:5px 0;font-weight:700;font-size:.97em;min-height:46px}
-.pcard-a{border:2px solid #0AC8B9;background:rgba(10,200,185,.08);color:#0AC8B9}
-.pcard-b{border:2px solid #E91E63;background:rgba(233,30,99,.08);color:#E91E63}
-.pcard-empty{border:1px dashed #333;color:#444;justify-content:center;font-style:italic}
-.pcard-sel{border:2px solid #C89B3C!important;background:rgba(200,155,60,.15)!important;cursor:pointer}
-.pcard button{width:auto;padding:2px 8px;font-size:.8em;margin:0 0 0 6px}
-/* Timer */
-.timer-box{border-radius:8px;padding:12px;text-align:center;margin-bottom:10px;border:2px solid #00C060}
-.timer-num{font-size:2.2em;font-weight:900}
-.timer-bar{background:#333;border-radius:3px;height:6px;margin-top:6px}
-.timer-fill{height:100%;border-radius:3px;transition:width .5s,background .5s}
-/* Auction target */
-.target-box{background:radial-gradient(circle,rgba(200,155,60,.12),transparent 70%);
-  padding:16px;text-align:center;border-bottom:2px solid #C89B3C;margin-bottom:10px}
-.target-name{font-size:2.4em;font-weight:900;color:#C89B3C;text-shadow:0 0 20px rgba(200,155,60,.7)}
-/* Bid area */
-.bid-area{background:rgba(1,10,19,.8);border:1px solid #C89B3C;border-radius:10px;padding:14px;margin:8px 0}
-.bid-status{text-align:center;padding:12px;border-radius:8px;margin:4px 0;font-weight:700;font-size:1em}
-.bid-waiting{border:1px dashed #555;color:#777}
-.bid-done{border:1px solid #00C060;color:#00C060;background:rgba(0,192,96,.07)}
-.bid-reveal{font-size:1.4em;padding:14px;border-radius:8px;text-align:center;
-  border:2px solid #C89B3C;background:rgba(200,155,60,.1);margin:6px 0;animation:pop .3s ease}
-@keyframes pop{from{transform:scale(.95);opacity:.6}to{transform:scale(1);opacity:1}}
-@keyframes pulse-danger{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.05);opacity:.8}}
-@keyframes slide-left{from{transform:translateX(-24px);opacity:0}to{transform:translateX(0);opacity:1}}
-@keyframes slide-right{from{transform:translateX(24px);opacity:0}to{transform:translateX(0);opacity:1}}
-@keyframes winner-glow{0%{box-shadow:0 0 0 rgba(0,192,96,0)}60%{box-shadow:0 0 28px rgba(0,192,96,.75)}100%{box-shadow:0 0 12px rgba(0,192,96,.35)}}
-@keyframes toast-in{from{top:0;opacity:0}to{top:24px;opacity:1}}
-.timer-danger{animation:pulse-danger .6s ease-in-out infinite}
-/* History */
-.hist-item{padding:5px 10px;border-radius:4px;margin:3px 0;font-size:.82em;font-weight:600;border-left:3px solid}
-.hist-blue{border-color:#0AC8B9;background:rgba(10,200,185,.06)}
-.hist-red{border-color:#E91E63;background:rgba(233,30,99,.06)}
-.hist-tie{border-color:#C89B3C;background:rgba(200,155,60,.06)}
-/* Trade status */
-.trade-status{text-align:center;padding:12px;border-radius:8px;border:2px solid #C89B3C;
-  margin:8px 0;font-weight:700}
-/* Room code display */
-.room-code{font-size:2.8em;font-weight:900;letter-spacing:6px;text-align:center;
-  padding:16px;border:2px solid #C89B3C;border-radius:10px;color:#C89B3C;
-  text-shadow:0 0 15px rgba(200,155,60,.6);margin:10px 0}
-/* Roles */
-.role-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
-/* Setup table */
-table{width:100%;border-collapse:collapse;font-size:.85em}
-th{background:#0d1b2a;color:#C89B3C;padding:8px;text-align:left;border:1px solid #C89B3C33}
-td{padding:4px 6px;border:1px solid #C89B3C22}
-td input,td select{margin:0;padding:5px 8px;font-size:.85em}
-/* Grid layout for auction */
-.auction-grid{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:12px;max-width:1200px;margin:0 auto}
-@media(max-width:800px){.auction-grid{grid-template-columns:1fr}}
-.section-title{font-size:.95em;font-weight:700;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #C89B3C44}
-.metric{background:rgba(1,10,19,.9);border:1px solid #C89B3C;border-radius:6px;
-  padding:8px 12px;margin-bottom:8px;text-align:center}
-.metric .val{font-size:1.3em;font-weight:900}
-.metric .lbl{font-size:.75em;color:#888}
-/* Custom tooltip */
-.tip-wrap{position:relative;display:inline-flex;align-items:center}
-.tip-box{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
-  background:#0d1b2a;border:1px solid #C89B3C;border-radius:7px;padding:9px 12px;
-  color:#C89B3C;font-size:.8em;line-height:1.5;white-space:normal;width:210px;
-  z-index:200;pointer-events:none;font-weight:400;text-align:left;
-  box-shadow:0 4px 16px rgba(0,0,0,.6)}
-.tip-box::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
-  border:6px solid transparent;border-top-color:#C89B3C}
-.tip-wrap:hover .tip-box,.tip-wrap.open .tip-box{display:block}
+a{color:inherit}
+details summary::-webkit-details-marker{display:none}
+
+/* ══════════════════════════════════════════════════════
+   후보 A 적용 — 하이텍 테마 (홈 · 로비 · 세팅 · 대기)
+   ══════════════════════════════════════════════════════ */
+body.theme-hex{
+  background:radial-gradient(120% 90% at 50% -10%,#12213D 0%,#0A1428 45%,#050C16 100%) fixed;
+  color:#F0E6D2;
+}
+.hx-wrap{max-width:460px;margin:0 auto}
+.hx-hexmark{width:40px;height:40px;margin:26px auto 14px;
+  background:linear-gradient(155deg,#F0C46E,#C8AA6E 60%,#785A28);
+  clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%)}
+.hx-eyebrow{text-align:center;font-size:.68em;letter-spacing:.28em;text-transform:uppercase;color:#C8AA6E;font-weight:700;margin-bottom:10px}
+.hx-title{text-align:center;font-family:Cambria,"Iowan Old Style",Georgia,serif;font-weight:600;font-size:1.9em;letter-spacing:.02em;text-shadow:0 2px 14px rgba(0,0,0,.5);margin-bottom:4px}
+.hx-sub{text-align:center;font-size:.82em;color:#9C9483;margin-bottom:26px}
+.hx-panel{border:1px solid #785A28;
+  clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);
+  background:rgba(5,12,22,.55);padding:22px;margin-bottom:16px}
+.hx-panel h3{font-family:Cambria,Georgia,serif;font-weight:600;font-size:1.02em;color:#C8AA6E}
+.hx-divider{display:flex;align-items:center;gap:10px;color:#785A28;font-size:.7em;letter-spacing:.16em;text-transform:uppercase;margin:22px 0}
+.hx-divider::before,.hx-divider::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,transparent,#785A28,transparent)}
+body.theme-hex button{
+  background:linear-gradient(180deg,#1A2740,#0F1A2E);border:1px solid #C8AA6E;color:#F0C46E;
+  font-family:Cambria,Georgia,serif;font-weight:600;letter-spacing:.02em;
+  clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px)}
+body.theme-hex button:hover:not(:disabled){background:linear-gradient(180deg,#243A5C,#152341);border-color:#F0C46E;box-shadow:0 0 22px rgba(240,196,110,.3)}
+body.theme-hex button.ghost{background:transparent;border-color:#4A4638;color:#8C887C;box-shadow:none;clip-path:none;font-family:inherit;font-weight:600}
+body.theme-hex button.ghost:hover{border-color:#9C9483;color:#C8AA6E;box-shadow:none}
+body.theme-hex input,body.theme-hex select{background:#050C16;border:1px solid #785A28;color:#F0C46E}
+body.theme-hex input:focus,body.theme-hex select:focus{outline:none;border-color:#C8AA6E}
+body.theme-hex label{color:#9C9483}
+body.theme-hex table{width:100%;border-collapse:collapse;font-size:.85em}
+body.theme-hex th{background:#050C16;color:#C8AA6E;padding:8px;text-align:left;border:1px solid #785A2833;font-weight:600;text-transform:uppercase;letter-spacing:.04em;font-size:.82em}
+body.theme-hex td{padding:5px 6px;border:1px solid #785A2822}
+body.theme-hex td input,body.theme-hex td select{margin:0;padding:6px 8px;font-size:.85em}
+.hx-code-input{letter-spacing:.4em;text-align:center;font-size:1.1em}
+.hx-room-code{font-family:Cambria,Georgia,serif;font-size:2.6em;font-weight:700;letter-spacing:.22em;text-align:center;
+  padding:22px 10px;border:1px solid #785A28;
+  clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);
+  color:#C8AA6E;text-shadow:0 0 18px rgba(200,170,110,.5);margin:14px 0;cursor:pointer;user-select:none}
+.hx-status-row{display:flex;align-items:center;gap:10px;margin:10px 0;font-size:.9em}
+.hx-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+
+/* ══════════════════════════════════════════════════════
+   후보 B 적용 — 브로드캐스트 테마 (경매 · 결과)
+   ══════════════════════════════════════════════════════ */
+body.theme-bcast{background:#0D0F12;color:#EDEFF2}
+.bc-wrap{max-width:1200px;margin:0 auto}
+.bc-topbar{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px;flex-wrap:wrap;font-size:.8em;color:#6B7178}
+.bc-code b{color:#EDEFF2;cursor:pointer;font-weight:700}
+body.theme-bcast button{
+  background:#EDEFF2;color:#0D0F12;font-weight:800;letter-spacing:.03em;text-transform:uppercase;font-size:.82em;
+  clip-path:polygon(0 0,100% 0,100% 100%,10px 100%,0 calc(100% - 10px))}
+body.theme-bcast button:hover:not(:disabled){background:#4EE1FF;box-shadow:0 0 18px rgba(78,225,255,.4)}
+body.theme-bcast button.outline{background:transparent;border:1px solid #EDEFF2;color:#EDEFF2;clip-path:none}
+body.theme-bcast button.outline:hover{background:#FF4655;border-color:#FF4655;color:#0D0F12;box-shadow:none}
+body.theme-bcast button.bare{background:transparent;border:1px solid #2C2E33;color:#9AA0A8;clip-path:none;text-transform:none;font-weight:600;letter-spacing:0}
+body.theme-bcast button.bare:hover{border-color:#6B7178;color:#EDEFF2;box-shadow:none}
+body.theme-bcast .bc-submit:hover:not(:disabled){filter:brightness(1.15);box-shadow:none}
+body.theme-bcast input,body.theme-bcast select{background:#17191D;border:1px solid #2C2E33;color:#EDEFF2}
+body.theme-bcast input:focus,body.theme-bcast select:focus{outline:none;border-color:#4EE1FF}
+
+.bc-grid{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:14px;max-width:1200px;margin:0 auto}
+@media(max-width:860px){.bc-grid{grid-template-columns:1fr}}
+
+.bc-title{position:relative;text-align:center;padding:22px 0 18px;overflow:hidden}
+.bc-title::before,.bc-title::after{content:'';position:absolute;top:0;bottom:0;width:55%}
+.bc-title::before{left:-8%;background:linear-gradient(100deg,rgba(78,225,255,.14),transparent 70%)}
+.bc-title::after{right:-8%;background:linear-gradient(260deg,rgba(255,70,85,.14),transparent 70%)}
+.bc-vs{position:relative;font-weight:900;font-size:.68em;letter-spacing:.32em;color:#6B7178;margin-bottom:6px;text-transform:uppercase}
+.bc-h1{position:relative;font-family:"Arial Narrow","Segoe UI",sans-serif;font-weight:900;text-transform:uppercase;font-size:1.7em;transform:skewX(-4deg)}
+
+.bc-panel{background:#17191D;border:1px solid #232529;padding:16px}
+.bc-panel-title{font-size:.68em;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#6B7178;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #232529}
+.bc-panel-title.blue{color:#4EE1FF;border-color:#1c3a42}
+.bc-panel-title.red{color:#FF4655;border-color:#3a1c20}
+
+.bc-metric{background:#0D0F12;border:1px solid #232529;padding:10px 12px;text-align:center;margin-bottom:10px}
+.bc-metric .lbl{font-size:.64em;letter-spacing:.1em;text-transform:uppercase;color:#6B7178}
+.bc-metric .val{font-size:1.5em;font-weight:900;font-variant-numeric:tabular-nums}
+.bc-metric .bar{background:#232529;height:5px;margin-top:6px}
+.bc-metric .bar i{display:block;height:100%;transition:width .5s}
+
+.bc-pcard{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;font-weight:700;font-size:.9em;margin:5px 0;min-height:42px;background:#0D0F12;border-left:3px solid transparent}
+.bc-pcard.blue{border-left-color:#4EE1FF}
+.bc-pcard.red{border-left-color:#FF4655}
+.bc-pcard.empty{border-left-color:#232529;color:#3a3d42;font-style:italic;justify-content:center;font-weight:400}
+
+.bc-timer{border:1px solid #232529;background:#17191D;text-align:center;padding:14px;margin-bottom:10px}
+.bc-timer .num{font-size:2.1em;font-weight:900;font-variant-numeric:tabular-nums}
+.bc-timer .bar{background:#232529;height:5px;margin-top:8px}
+.bc-timer .bar i{display:block;height:100%;transition:width .5s,background .5s}
+@keyframes bc-danger{0%,100%{opacity:1}50%{opacity:.55}}
+.bc-timer.danger .num{animation:bc-danger .6s ease-in-out infinite}
+
+.bc-target{background:#17191D;border:1px solid #232529;text-align:center;padding:20px 16px;margin-bottom:10px}
+.bc-target .eyebrow{font-size:.64em;letter-spacing:.2em;color:#6B7178;text-transform:uppercase;margin-bottom:8px}
+.bc-target .name{font-family:"Arial Narrow","Segoe UI",sans-serif;font-weight:900;font-size:2em;text-transform:uppercase}
+
+.bc-bid{background:#17191D;border:1px solid #232529;padding:16px;margin-bottom:10px}
+.bc-standings{display:flex;align-items:stretch;gap:1px;background:#232529;margin-bottom:10px}
+.bc-standings .cell{flex:1;background:#0D0F12;text-align:center;padding:12px 8px;font-size:1.1em;font-weight:900}
+.bc-standings .cell.blue{color:#4EE1FF}
+.bc-standings .cell.red{color:#FF4655}
+.bc-vsmid{display:flex;align-items:center;padding:0 4px;color:#3a3d42;font-weight:900;flex-shrink:0}
+
+.bc-hist{padding:6px 10px;font-size:.8em;font-weight:600;margin:3px 0;border-left:3px solid;background:#17191D}
+.bc-hist.blue{border-color:#4EE1FF}
+.bc-hist.red{border-color:#FF4655}
+.bc-hist.tie{border-color:#6B7178}
 </style>
 </head>
 <body>
@@ -106,7 +135,6 @@ td input,td select{margin:0;padding:5px 8px;font-size:.85em}
 <script>
 const TIERS=['언랭','아이언','브론즈','실버','골드','플래티넘','에메랄드','다이아','마스터','그랜드마스터','챌린저'];
 const POSITIONS=['미정','탑','정글','미드','원딜','서폿'];
-const POS_ICON={미정:'❓',탑:'🛡️',정글:'🌿',미드:'⚡',원딜:'🏹',서폿:'💙'};
 const TIER_COLOR={언랭:'#888',아이언:'#8B6355',브론즈:'#AD5600',실버:'#A0A9B8',골드:'#C89B3C',
   플래티넘:'#00B4A0',에메랄드:'#00C060',다이아:'#576BCE',마스터:'#9D4DC3',그랜드마스터:'#CF3F3F',챌린저:'#F4C874'};
 
@@ -156,16 +184,11 @@ function send(type,data={}){
   if(ws && ws.readyState===1) ws.send(JSON.stringify({type,...data}));
 }
 
-function hexToRgb(hex){
-  const r=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-  return r ? `${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}` : '136,136,136';
-}
-
 function copyCode(code){
   navigator.clipboard.writeText(code).then(()=>{
     const el=document.createElement('div');
-    el.textContent='📋 방 코드 복사됨!';
-    el.style.cssText='position:fixed;top:24px;left:50%;transform:translateX(-50%);background:#00C060;color:#000;padding:9px 20px;border-radius:8px;font-weight:700;z-index:9999;animation:toast-in .25s ease,pop .25s ease';
+    el.textContent='방 코드 복사됨';
+    el.style.cssText='position:fixed;top:24px;left:50%;transform:translateX(-50%);background:#00C060;color:#000;padding:9px 20px;border-radius:4px;font-weight:700;z-index:9999';
     document.body.appendChild(el);
     setTimeout(()=>el.remove(),1800);
   });
@@ -278,11 +301,11 @@ function _doReconnect(){
   if(!banner){
     banner = document.createElement('div');
     banner.id = 'reconn-banner';
-    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:rgba(200,155,60,.12);border-bottom:1px solid #C89B3C44;color:#C89B3C;text-align:center;padding:7px;font-weight:700;z-index:9999;font-size:.88em';
+    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:rgba(255,209,102,.12);border-bottom:1px solid #FFD16644;color:#FFD166;text-align:center;padding:7px;font-weight:700;z-index:9999;font-size:.88em';
     document.body.prepend(banner);
   }
   const delay = Math.min(1500 * _reconn.attempts, 8000);
-  banner.textContent = `🔄 연결 끊김 — ${Math.round(delay/1000)}초 후 재연결 시도 (${_reconn.attempts}/5)`;
+  banner.textContent = `연결 끊김 — ${Math.round(delay/1000)}초 후 재연결 시도 (${_reconn.attempts}/5)`;
   _reconn.timer = setTimeout(()=>{ _reconn.timer=null; connect(); }, delay);
 }
 
@@ -304,156 +327,126 @@ function render(){
   else if(ph==='result') renderResult();
 }
 
-// ── 홈 ────────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+//  하이텍 테마 화면 — 홈 / 로비 / 세팅 / 대기
+// ══════════════════════════════════════════════════════════════════════════
 function renderHome(){
+  document.body.className = 'theme-hex';
   document.getElementById('app').innerHTML=`
-  <h1>⚔️ 롤 내전 경매 시스템</h1>
-  <div style="max-width:420px;margin:0 auto">
-    <div class="card">
-      <button onclick="createRoom()">🏠 새 방 만들기 (블루팀 팀장)</button>
+  <div class="hx-wrap">
+    <div class="hx-hexmark"></div>
+    <p class="hx-eyebrow">Hextech Draft Ledger</p>
+    <h1 class="hx-title">롤 내전 경매</h1>
+    <p class="hx-sub">친구들과 포인트로 팀을 나누는 경매 드래프트</p>
+    <div class="hx-panel">
+      <h3>새로 시작</h3>
+      <button onclick="createRoom()" style="margin-top:12px">방 개설 — 블루팀 팀장으로 시작</button>
     </div>
-    <div class="card">
-      <h3 style="margin-bottom:8px">기존 방 참가</h3>
-      <label>방 코드</label>
-      <input id="code-in" placeholder="예: AB3K7P" maxlength="6"
-        style="text-transform:uppercase;letter-spacing:4px;font-size:1.2em;text-align:center">
-      <label style="margin-top:10px">역할 선택</label>
+    <div class="hx-divider">기존 방 참가</div>
+    <div class="hx-panel">
+      <label>여섯 자리 방 코드</label>
+      <input id="code-in" class="hx-code-input" placeholder="AB3K7P" maxlength="6" style="text-transform:uppercase">
+      <label>역할</label>
       <select id="role-sel">
         <option value="">-- 선택 --</option>
-        <option value="red">🔴 레드팀 팀장</option>
-        <option value="spectator">👁️ 관전자</option>
+        <option value="red">레드팀 팀장</option>
+        <option value="spectator">관전자</option>
       </select>
-      <button onclick="joinRoom()" style="margin-top:8px">참가하기</button>
+      <button onclick="joinRoom()" style="margin-top:12px">참가하기</button>
     </div>
   </div>`;
 }
 
-// ── 로비 ──────────────────────────────────────────────────────────────────
 function renderLobby(){
+  document.body.className = 'theme-hex';
   const conn = gs.connected || [];
   const hasBlue = conn.includes('blue');
   const hasRed  = conn.includes('red');
-  const dot = (c,txt) => `<div style="margin:6px 0">
-    <span class="role-dot" style="background:${c}"></span>
-    <span style="color:${c}">${txt}</span>
+  const row = (c,txt,on) => `<div class="hx-status-row">
+    <span class="hx-dot" style="background:${on?c:'#3A3628'}"></span>
+    <span style="color:${on?c:'#6B6557'}">${txt}</span>
   </div>`;
-
   const canStart = myRole==='blue' && hasBlue && hasRed;
   document.getElementById('app').innerHTML=`
-  <h1>⚔️ 롤 내전 경매 시스템</h1>
-  <div style="max-width:480px;margin:0 auto">
-    <div class="card" style="text-align:center">
-      <div style="font-size:.9em;color:#aaa;margin-bottom:4px">방 코드</div>
-      <div class="room-code" onclick="copyCode('${gs.room_id}')"
-        style="cursor:pointer;user-select:none" title="클릭하여 복사">
-        ${gs.room_id}
-      </div>
-      <button onclick="copyCode('${gs.room_id}')"
-        style="width:auto;padding:6px 20px;font-size:.85em;margin-top:6px;border-color:#555;color:#888">
-        📋 코드 복사
-      </button>
-      <div style="font-size:.82em;color:#aaa;margin-top:6px">이 코드를 다른 팀원에게 공유하세요</div>
+  <div class="hx-wrap">
+    <div class="hx-hexmark"></div>
+    <p class="hx-eyebrow">Draft Room</p>
+    <h1 class="hx-title">롤 내전 경매</h1>
+    <div class="hx-panel" style="text-align:center">
+      <label>방 코드</label>
+      <div class="hx-room-code" onclick="copyCode('${gs.room_id}')" title="클릭하여 복사">${gs.room_id}</div>
+      <button class="ghost" onclick="copyCode('${gs.room_id}')" style="width:auto;padding:6px 18px;font-size:.8em;display:inline-block">코드 복사</button>
+      <p class="hx-sub" style="margin-top:10px">이 코드를 다른 팀원에게 공유하세요</p>
     </div>
-    <div class="card">
-      <h3>접속 현황</h3>
-      ${dot('#0AC8B9', '🔵 블루팀 팀장 ' + (hasBlue?'✅ 접속됨':'⏳ 대기 중'))}
-      ${dot('#E91E63', '🔴 레드팀 팀장 ' + (hasRed ?'✅ 접속됨':'⏳ 대기 중'))}
-      ${conn.filter(r=>r==='spectator').length > 0 ? dot('#888','👁️ 관전자 접속됨') : ''}
+    <div class="hx-panel">
+      <h3 style="margin-bottom:12px">접속 현황</h3>
+      ${row('#0AC8B9','블루팀 팀장 ' + (hasBlue?'접속됨':'대기 중'), hasBlue)}
+      ${row('#C8443C','레드팀 팀장 ' + (hasRed ?'접속됨':'대기 중'), hasRed)}
+      ${conn.filter(r=>r==='spectator').length > 0 ? row('#9C9483','관전자 접속됨', true) : ''}
     </div>
     ${canStart ? `
-    <div class="card">
-      <button onclick="goToSetup()" style="font-size:1.1em">🚀 드래프트 설정 시작</button>
-    </div>` : myRole==='blue' ? `
-    <div class="card" style="text-align:center;color:#888">
-      레드팀 팀장 접속 대기 중...
-    </div>` : `
-    <div class="card" style="text-align:center;color:#888">
-      블루팀 팀장이 설정을 시작할 때까지 대기...
-    </div>`}
-    <div class="card" style="text-align:center">
-      <button onclick="goHome()"
-        style="border-color:#555;color:#888;font-size:.9em">
-        🏠 메인 화면으로
-      </button>
-    </div>
+    <button onclick="goToSetup()" style="font-size:1.05em">드래프트 설정 시작</button>` : `
+    <p class="hx-sub">${myRole==='blue' ? '레드팀 팀장 접속 대기 중...' : '블루팀 팀장이 설정을 시작할 때까지 대기...'}</p>`}
+    <button class="ghost" onclick="goHome()" style="margin-top:14px">메인 화면으로</button>
   </div>`;
 }
 
 function goToSetup(){
-  // phase를 setup으로 전환 (블루팀 팀장만)
   document.getElementById('app').innerHTML='';
   renderSetup();
 }
 
-// ── 설정 ──────────────────────────────────────────────────────────────────
 function renderSetup(){
+  document.body.className = 'theme-hex';
   const tOpts = TIERS.map(t=>`<option>${t}</option>`).join('');
   const pOpts = POSITIONS.map(p=>`<option>${p}</option>`).join('');
   let rows='';
   for(let i=0;i<10;i++){
     rows+=`<tr>
-      <td><span style="color:#888;font-size:.8em">${i+1}</span></td>
+      <td style="color:#6B6557;font-size:.8em">${i+1}</td>
       <td><input id="pn${i}" placeholder="소환사명"></td>
       <td><select id="pt${i}">${tOpts}</select></td>
       <td><select id="pp${i}">${pOpts}</select></td>
     </tr>`;
   }
   document.getElementById('app').innerHTML=`
-  <h1>⚔️ 드래프트 설정</h1>
-  <div style="max-width:800px;margin:0 auto">
-    <div class="card">
-      <h3>⚙️ 게임 설정</h3>
+  <div class="hx-wrap" style="max-width:760px">
+    <p class="hx-eyebrow" style="margin-top:16px">Draft Setup</p>
+    <h1 class="hx-title">드래프트 설정</h1>
+    <div class="hx-panel">
+      <h3 style="margin-bottom:14px">게임 설정</h3>
       <div class="row">
         <div class="col">
-          <label>💰 시작 포인트</label>
-          <select id="cfg-sp">
-            ${[50,70,100,120,150,200].map(v=>`<option ${v===100?'selected':''}>${v}</option>`).join('')}
-          </select>
+          <label>시작 포인트</label>
+          <select id="cfg-sp">${[50,70,100,120,150,200].map(v=>`<option ${v===100?'selected':''}>${v}</option>`).join('')}</select>
         </div>
         <div class="col">
-          <label>⚔️ 동점 처리</label>
-          <select id="cfg-tie">
-            <option value="random">랜덤 결정</option>
-            <option value="reshuffle">뒤로 이동</option>
-          </select>
+          <label>동점 처리</label>
+          <select id="cfg-tie"><option value="random">랜덤 결정</option><option value="reshuffle">뒤로 이동</option></select>
         </div>
         <div class="col">
-          <label>⏱️ 타이머 (초)</label>
-          <select id="cfg-timer">
-            ${[10,15,20,30,45,60].map(v=>`<option ${v===30?'selected':''}>${v}</option>`).join('')}
-          </select>
+          <label>타이머 (초)</label>
+          <select id="cfg-timer">${[10,15,20,30,45,60].map(v=>`<option ${v===30?'selected':''}>${v}</option>`).join('')}</select>
         </div>
       </div>
     </div>
-    <div class="card">
-      <h3>👥 선수 등록 (10명)</h3>
-      <table>
-        <thead><tr><th>#</th><th>소환사명</th><th>티어</th><th>포지션</th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
+    <div class="hx-panel">
+      <h3 style="margin-bottom:14px">선수 등록 (10명)</h3>
+      <table><thead><tr><th>#</th><th>소환사명</th><th>티어</th><th>포지션</th></tr></thead><tbody>${rows}</tbody></table>
     </div>
-    <div class="card" id="leader-area" style="display:none">
-      <h3>🏆 팀장 선택</h3>
+    <div class="hx-panel" id="leader-area" style="display:none">
+      <h3 style="margin-bottom:14px">팀장 선택</h3>
       <div class="row">
-        <div class="col">
-          <label>🔵 블루팀 팀장</label>
-          <select id="la"></select>
-        </div>
-        <div class="col">
-          <label>🔴 레드팀 팀장</label>
-          <select id="lb"></select>
-        </div>
+        <div class="col"><label>블루팀 팀장</label><select id="la"></select></div>
+        <div class="col"><label>레드팀 팀장</label><select id="lb"></select></div>
       </div>
     </div>
-    <div class="card">
-      <div id="setup-status" style="color:#aaa;font-size:.9em;margin-bottom:6px">
-        소환사명을 10명 입력하면 팀장 선택이 활성화됩니다.
-      </div>
-      <button id="start-btn" onclick="startGame()" disabled>🚀 드래프트 시작 (LOCK IN)</button>
+    <div class="hx-panel">
+      <div id="setup-status" style="color:#9C9483;font-size:.88em;margin-bottom:12px">소환사명을 10명 입력하면 팀장 선택이 활성화됩니다.</div>
+      <button id="start-btn" onclick="startGame()" disabled>드래프트 시작 (LOCK IN)</button>
     </div>
   </div>`;
 
-  // 이름 입력 감시 + 자동 저장
   for(let i=0;i<10;i++){
     A(`pn${i}`).addEventListener('input', updateLeaders);
     A(`pn${i}`).addEventListener('input', _saveSetup);
@@ -474,7 +467,7 @@ function updateLeaders(){
   const dup = names.length !== new Set(names).size;
   const ok  = names.length===10 && !dup;
 
-  A('setup-status').textContent = dup ? '⚠️ 중복된 소환사명이 있습니다.' :
+  A('setup-status').textContent = dup ? '중복된 소환사명이 있습니다.' :
     `${names.length}/10명 입력됨`;
 
   if(ok){
@@ -511,116 +504,99 @@ function startGame(){
   });
 }
 
-// ── 대기 화면 (레드/관전) ─────────────────────────────────────────────────
 function renderWaiting(){
+  document.body.className = 'theme-hex';
   document.getElementById('app').innerHTML=`
-  <h1>⚔️ 롤 내전 경매 시스템</h1>
-  <div style="max-width:400px;margin:60px auto;text-align:center" class="card">
-    <div style="font-size:2em;margin-bottom:12px">⏳</div>
-    <div style="color:#ccc">블루팀 팀장이 드래프트를 설정 중입니다...</div>
-    <div style="color:#aaa;font-size:.85em;margin-top:8px">방 코드: <b style="color:#C89B3C">${myRoom}</b></div>
+  <div class="hx-wrap" style="margin-top:80px;text-align:center">
+    <div class="hx-hexmark"></div>
+    <p class="hx-sub" style="color:#C8AA6E;font-size:.95em">블루팀 팀장이 드래프트를 설정 중입니다...</p>
+    <p class="hx-sub">방 코드: <b style="color:#C8AA6E">${myRoom}</b></p>
   </div>`;
 }
 
-// ── 타이머 HTML 빌더 (부분 업데이트용으로 분리) ──────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+//  브로드캐스트 테마 화면 — 경매 / 결과
+// ══════════════════════════════════════════════════════════════════════════
 function buildTimerHtml(rem){
   const maxTimer = gs?.cfg?.timer || 30;
   const paused   = gs?.paused;
   const pct      = Math.round(100*rem/maxTimer);
   const danger   = !paused && rem <= 10 && rem > 0;
-  const tcolor   = paused ? '#555' : rem > maxTimer*.5 ? '#00C060' : rem > maxTimer*.2 ? '#C89B3C' : '#CF3F3F';
-  const label    = paused ? `⏸️ ${rem}s (일시정지)` : `⏱️ ${rem}s`;
-  const numSize  = danger ? '2.8em' : '2.2em';
-  return `<div class="timer-box${danger?' timer-danger':''}" style="border-color:${tcolor}${danger?';border-width:3px':''}">
-    <div class="timer-num" style="color:${tcolor};font-size:${numSize};transition:font-size .2s">${label}</div>
-    <div class="timer-bar">
-      <div class="timer-fill" style="width:${pct}%;background:${tcolor}"></div>
-    </div>
+  const tcolor   = paused ? '#6B7178' : rem > maxTimer*.5 ? '#4EE1FF' : rem > maxTimer*.2 ? '#FFD166' : '#FF4655';
+  const label    = paused ? `${rem}s · 일시정지` : `${rem}s`;
+  return `<div class="bc-timer${danger?' danger':''}">
+    <div class="num" style="color:${tcolor}">${label}</div>
+    <div class="bar"><i style="width:${pct}%;background:${tcolor}"></i></div>
   </div>`;
 }
 
-// ── 경매 ──────────────────────────────────────────────────────────────────
 function renderAuction(){
-  const sp   = gs.cfg?.sp || 100;
+  document.body.className = 'theme-bcast';
   const pool = gs.pool || [];
   if(!pool.length){ renderResult(); return; }
 
-  const player   = pool[0];
-  const pinfo    = (gs.all_players||{})[player] || {tier:'언랭',position:'미정'};
-  const rem      = gs.timer ?? gs.cfg?.timer ?? 30;
+  const player = pool[0];
+  const pinfo  = (gs.all_players||{})[player] || {tier:'언랭',position:'미정'};
+  const rem    = gs.timer ?? gs.cfg?.timer ?? 30;
 
-  const turnTeam   = gs.bid_turn === 'blue' ? '🔵 블루팀' : '🔴 레드팀';
-  const turnColor  = gs.bid_turn === 'blue' ? '#0AC8B9' : '#E91E63';
+  const turnTeam    = gs.bid_turn === 'blue' ? '블루팀' : '레드팀';
+  const turnColor   = gs.bid_turn === 'blue' ? '#4EE1FF' : '#FF4655';
   const isMyTurnNow = gs.bid_turn === myRole;
-  const turnLabel  = isMyTurnNow ? '⚡ 당신의 입찰 차례!' : `⏳ ${turnTeam} 입찰 중...`;
-  const turnHtml   = (myRole !== 'spectator') ? `
-  <div style="text-align:center;font-weight:700;font-size:.9em;color:${isMyTurnNow?turnColor:'#aaa'};margin-bottom:4px">
+  const turnLabel   = isMyTurnNow ? '당신의 입찰 차례' : `${turnTeam} 입찰 중...`;
+  const turnHtml    = (myRole !== 'spectator') ? `
+  <div style="text-align:center;font-weight:800;font-size:.8em;letter-spacing:.06em;text-transform:uppercase;color:${isMyTurnNow?turnColor:'#6B7178'};margin-bottom:6px">
     ${turnLabel}
   </div>` : '';
   const timerHtml = `<div id="timer-display">${buildTimerHtml(rem)}</div>`;
 
-  const tc = TIER_COLOR[pinfo.tier]||'#888';
-  const pi = POS_ICON[pinfo.position]||'❓';
-  const targetHtml=`
-  <div class="target-box">
-    <div style="font-size:.8em;color:#aaa;margin-bottom:4px">NEXT CHAMPION</div>
-    <div class="target-name">${player}</div>
-    <div style="margin-top:6px">
-      <span style="color:${tc};font-weight:700">${pinfo.tier}</span>
-      &nbsp;&nbsp;
-      <span style="color:#aaa">${pi} ${pinfo.position}</span>
-    </div>
-    <div style="margin-top:6px">
-      <span style="color:#aaa;font-size:.85em">남은 선수 </span>
-      <span style="color:#C89B3C;font-size:1em;font-weight:900">${pool.length}</span>
-      <span style="color:#aaa;font-size:.85em">명</span>
+  const targetHtml = `
+  <div class="bc-target">
+    <div class="eyebrow">Next Pick · 남은 ${pool.length}명</div>
+    <div class="name">${player}</div>
+    <div style="margin-top:8px;font-size:.85em;color:#9AA0A8">
+      <span style="color:${TIER_COLOR[pinfo.tier]||'#9AA0A8'};font-weight:700">${pinfo.tier}</span> · ${pinfo.position}
     </div>
   </div>`;
 
   const lastMsg = gs.last_msg ?
-    `<div style="text-align:center;color:#aaa;font-size:.82em;margin:4px 0">최근: ${gs.last_msg}</div>` : '';
+    `<div style="text-align:center;color:#6B7178;font-size:.8em;margin:4px 0 10px">${gs.last_msg}</div>` : '';
 
-  // 입찰 영역 (역할별)
   const bidHtml = buildBidArea();
 
-  // 히스토리 (id 부여 → 열림상태 보존)
   const hist = (gs.history||[]).slice().reverse().map(h=>`
-    <div class="hist-item hist-${h.type}">${h.result}</div>`).join('');
+    <div class="bc-hist ${h.type}">${h.result}</div>`).join('');
   const histHtml = hist ? `
-  <details id="det-hist" style="margin-top:8px">
-    <summary style="color:#aaa;font-size:.85em;cursor:pointer">📋 기록 (${(gs.history||[]).length}건)</summary>
-    <div style="margin-top:4px;max-height:200px;overflow-y:auto">${hist}</div>
+  <details id="det-hist" style="margin-top:10px">
+    <summary style="color:#6B7178;font-size:.82em;cursor:pointer;font-weight:600">기록 (${(gs.history||[]).length}건)</summary>
+    <div style="margin-top:6px;max-height:200px;overflow-y:auto">${hist}</div>
   </details>` : '';
 
-  // 팀 패널
   const teamA = buildTeamPanel('a');
   const teamB = buildTeamPanel('b');
 
-  const roleLabel = myRole==='blue'?'🔵 블루팀 팀장':myRole==='red'?'🔴 레드팀 팀장':'👁️ 관전';
+  const roleLabel = myRole==='blue'?'블루팀 팀장':myRole==='red'?'레드팀 팀장':'관전';
   document.getElementById('app').innerHTML=`
-  <h1>⚔️ 롤 내전 경매</h1>
-  <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:8px;flex-wrap:wrap">
-    <span style="font-size:.8em;color:#555">
-      방 코드: <b style="color:#C89B3C;cursor:pointer" onclick="copyCode('${myRoom}')" title="클릭하여 복사">${myRoom} 📋</b>
-      &nbsp;|&nbsp;
-      <span style="color:${myRole==='blue'?'#0AC8B9':myRole==='red'?'#E91E63':'#888'}">${roleLabel}</span>
-    </span>
-    ${(myRole==='blue'||myRole==='red') ? `
-    <button id="pause-btn" onclick="pauseTimer()"
-      style="width:auto;padding:5px 14px;font-size:.82em;margin:0">
-      ${gs.paused?'▶️ 재개':'⏸️ 일시정지'}
-    </button>` : ''}
-    <button onclick="goHome()"
-      style="width:auto;padding:5px 14px;font-size:.82em;margin:0;border-color:#555;color:#888">
-      🏠 홈
-    </button>
-  </div>
-  <div class="auction-grid">
-    ${teamA}
-    <div>
-      ${turnHtml}${timerHtml}${targetHtml}${lastMsg}${bidHtml}${histHtml}
+  <div class="bc-wrap">
+    <div class="bc-title">
+      <div class="bc-vs">Order · V · Chaos</div>
+      <div class="bc-h1">롤 내전 경매</div>
     </div>
-    ${teamB}
+    <div class="bc-topbar">
+      <span class="bc-code">방 코드 <b onclick="copyCode('${myRoom}')" title="클릭하여 복사">${myRoom}</b></span>
+      <span style="color:${myRole==='blue'?'#4EE1FF':myRole==='red'?'#FF4655':'#6B7178'}">${roleLabel}</span>
+      ${(myRole==='blue'||myRole==='red') ? `
+      <button class="bare" onclick="pauseTimer()" style="width:auto;padding:6px 14px">
+        ${gs.paused?'재개':'일시정지'}
+      </button>` : ''}
+      <button class="bare" onclick="goHome()" style="width:auto;padding:6px 14px">홈</button>
+    </div>
+    <div class="bc-grid">
+      ${teamA}
+      <div>
+        ${turnHtml}${timerHtml}${targetHtml}${lastMsg}${bidHtml}${histHtml}
+      </div>
+      ${teamB}
+    </div>
   </div>`;
 }
 
@@ -630,90 +606,77 @@ function buildBidArea(){
   const pb = gs.team_b?.points ?? sp;
   const aPassed = gs.bid_a_passed;
   const bPassed = gs.bid_b_passed;
-  const aVal    = gs.bid_a;   // null = 미입찰
+  const aVal    = gs.bid_a;
   const bVal    = gs.bid_b;
 
-  // 현재 입찰 현황 (항상 표시)
-  const aLabel = aPassed ? '❌ 포기' : aVal !== null ? `${aVal}pt` : '-';
-  const bLabel = bPassed ? '❌ 포기' : bVal !== null ? `${bVal}pt` : '-';
+  const aLabel = aPassed ? '포기' : aVal !== null ? `${aVal}pt` : '—';
+  const bLabel = bPassed ? '포기' : bVal !== null ? `${bVal}pt` : '—';
 
-  // ── 낙찰 결과 표시 중 ──
   if(gs.resolving){
     const winner = (aPassed && bPassed) ? 'tie'
       : aPassed ? 'red' : bPassed ? 'blue'
       : (aVal??0) > (bVal??0) ? 'blue' : (bVal??0) > (aVal??0) ? 'red' : 'tie';
-    const aGlow = winner==='blue'?'animation:winner-glow .7s ease forwards;border-color:#00C060;border-width:3px':winner==='red'?'opacity:.45':'';
-    const bGlow = winner==='red'?'animation:winner-glow .7s ease forwards;border-color:#00C060;border-width:3px':winner==='blue'?'opacity:.45':'';
     return `
-    <div class="bid-area" style="border-color:#C89B3C">
-      <div style="text-align:center;color:#aaa;font-size:.85em;margin-bottom:8px">📢 낙찰 결과</div>
-      <div class="row" style="align-items:center">
-        <div class="bid-reveal blue" style="animation:slide-left .3s ease;${aGlow}">
-          🔵 ${aLabel}${winner==='blue'?' 👑':''}
-        </div>
-        <div style="display:flex;align-items:center;padding:0 8px;color:#888;font-size:1.1em;font-weight:900;flex-shrink:0">vs</div>
-        <div class="bid-reveal red" style="animation:slide-right .3s ease;${bGlow}">
-          🔴 ${bLabel}${winner==='red'?' 👑':''}
-        </div>
+    <div class="bc-bid">
+      <div style="text-align:center;color:#6B7178;font-size:.76em;text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px">낙찰 결과</div>
+      <div class="bc-standings">
+        <div class="cell blue" style="${winner==='blue'?'box-shadow:inset 0 0 0 2px #4EE1FF':winner==='red'?'opacity:.4':''}">${aLabel}${winner==='blue'?' ★':''}</div>
+        <div class="bc-vsmid">VS</div>
+        <div class="cell red" style="${winner==='red'?'box-shadow:inset 0 0 0 2px #FF4655':winner==='blue'?'opacity:.4':''}">${bLabel}${winner==='red'?' ★':''}</div>
       </div>
-      ${winner==='tie'?`<div style="text-align:center;color:#C89B3C;margin-top:8px;font-weight:700">⚔️ 동점!</div>`:''}
+      ${winner==='tie'?`<div style="text-align:center;color:#FFD166;font-weight:700">동점!</div>`:''}
     </div>`;
   }
 
-  // 현황 바 (입찰 진행 중 항상 표시)
   const standingsHtml = `
-  <div class="row" style="margin-bottom:8px;align-items:center">
-    <div class="bid-reveal blue" style="font-size:1em;padding:8px">🔵 ${aLabel}</div>
-    <div style="display:flex;align-items:center;padding:0 6px;color:#555;font-weight:900;flex-shrink:0">vs</div>
-    <div class="bid-reveal red" style="font-size:1em;padding:8px">🔴 ${bLabel}</div>
+  <div class="bc-standings">
+    <div class="cell blue">${aLabel}</div>
+    <div class="bc-vsmid">VS</div>
+    <div class="cell red">${bLabel}</div>
   </div>`;
 
   const isMyTurn = gs.bid_turn === myRole;
   const myPts    = myRole==='blue' ? pa : pb;
 
-  // ── 관전자 ──
   if(myRole === 'spectator'){
-    const who = gs.bid_turn==='blue'?'🔵 블루팀':'🔴 레드팀';
-    return `<div class="bid-area">${standingsHtml}
-      <div class="bid-status bid-waiting">⏳ ${who} 결정 중...</div>
+    const who = gs.bid_turn==='blue'?'블루팀':'레드팀';
+    return `<div class="bc-bid">${standingsHtml}
+      <div style="text-align:center;color:#6B7178;font-size:.85em;padding:8px 0">${who} 결정 중...</div>
     </div>`;
   }
 
-  // ── 내 차례 ──
   if(isMyTurn){
-    const color = myRole==='blue'?'#0AC8B9':'#E91E63';
+    const color = myRole==='blue'?'#4EE1FF':'#FF4655';
     return `
-    <div class="bid-area">
+    <div class="bc-bid">
       ${standingsHtml}
-      <div style="color:${color};font-size:.9em;font-weight:700;text-align:center;margin-bottom:6px">⚡ 당신의 차례!</div>
+      <div style="color:${color};font-size:.8em;font-weight:800;text-align:center;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">당신의 차례</div>
       ${buildMyBidInput(myRole, myPts)}
-      <button onclick="passBid()" style="margin-top:6px;border-color:#555;color:#888;font-size:.9em">❌ 포기하기</button>
+      <button class="bare" onclick="passBid()" style="margin-top:8px">포기하기</button>
     </div>`;
   }
 
-  // ── 상대 차례 ──
-  const waitFor = gs.bid_turn==='blue'?'🔵 블루팀':'🔴 레드팀';
+  const waitFor = gs.bid_turn==='blue'?'블루팀':'레드팀';
   return `
-  <div class="bid-area">
+  <div class="bc-bid">
     ${standingsHtml}
-    <div class="bid-status bid-waiting">⏳ ${waitFor} 결정 중...</div>
+    <div style="text-align:center;color:#6B7178;font-size:.85em;padding:8px 0">${waitFor} 결정 중...</div>
   </div>`;
 }
 
 function buildMyBidInput(team, pts){
-  const color  = team==='blue'?'#0AC8B9':'#E91E63';
+  const color  = team==='blue'?'#4EE1FF':'#FF4655';
   const oppBid = team==='blue' ? gs.bid_b : gs.bid_a;
   const minBid = (oppBid !== null && oppBid !== undefined) ? oppBid+1 : 1;
-  const hint   = (oppBid !== null && oppBid !== undefined)
-    ? ` &nbsp;·&nbsp; 최소: <b style="color:#fff">${minBid}pt</b>` : '';
+  const hint   = (oppBid !== null && oppBid !== undefined) ? ` · 최소 ${minBid}pt` : '';
   return `
   <div>
-    <div style="color:${color};font-size:.85em;margin-bottom:4px">잔여: ${pts}G${hint}</div>
+    <div style="color:${color};font-size:.82em;margin-bottom:6px">잔여 ${pts}G${hint}</div>
     <input id="bid-input" type="number" min="${minBid}" max="${pts}" placeholder="${minBid} ~ ${pts}"
       onkeydown="if(event.key==='Enter')submitBid()"
-      style="color:${color};border-color:${color};text-align:center;font-size:1.1em">
-    <button onclick="submitBid()" style="margin-top:8px;border-color:${color};color:${color}">
-      ⚡ 입찰 확정
+      style="color:${color};border-color:${color};text-align:center;font-size:1.1em;font-weight:800">
+    <button class="bc-submit" onclick="submitBid()" style="margin-top:8px;background:${color};color:#0D0F12">
+      입찰 확정
     </button>
   </div>`;
 }
@@ -732,9 +695,9 @@ function submitBid(){
 
 function buildTeamPanel(team){
   const t       = team==='a' ? gs.team_a : gs.team_b;
-  const color   = team==='a' ? '#0AC8B9' : '#E91E63';
-  const name    = team==='a' ? '🔵 BLUE TEAM' : '🔴 RED TEAM';
-  const cls     = team==='a' ? 'pcard-a' : 'pcard-b';
+  const color   = team==='a' ? '#4EE1FF' : '#FF4655';
+  const name    = team==='a' ? 'BLUE TEAM' : 'RED TEAM';
+  const cls     = team==='a' ? 'blue' : 'red';
   const sp      = gs.cfg?.sp || 100;
   const pts     = t?.points ?? sp;
   const spent   = sp - pts;
@@ -744,41 +707,35 @@ function buildTeamPanel(team){
     if(i<members.length){
       const m = members[i];
       const d = (gs.all_players||{})[m]||{tier:'언랭',position:'미정'};
-      const tc= TIER_COLOR[d.tier]||'#888';
-      const pi= POS_ICON[d.position]||'❓';
       const isLeader = i===0;
-      const tierBg = `rgba(${hexToRgb(tc)},${isLeader?.13:.07})`;
-      const leaderStyle = isLeader
-        ? `border-width:3px;background:${tierBg};box-shadow:0 0 10px rgba(${hexToRgb(tc)},.2)`
-        : `background:${tierBg}`;
-      cards+=`<div class="pcard ${cls}" style="${leaderStyle}">
-        <span style="min-width:24px;font-size:${isLeader?'1em':'.85em'}">${isLeader?'👑':i}</span>
-        <span style="flex:1;margin:0 6px;font-size:${isLeader?'1.05em':'.97em'}">${m}</span>
-        <span style="color:${tc};font-size:.78em;margin-right:4px;font-weight:700">${d.tier}</span>
-        <span style="font-size:.85em;color:#aaa">${pi}</span>
+      cards+=`<div class="bc-pcard ${cls}" style="${isLeader?'border-left-width:5px':''}">
+        <span style="min-width:16px;font-size:.8em;color:#6B7178">${isLeader?'★':i}</span>
+        <span style="flex:1;margin:0 8px;color:#EDEFF2">${m}</span>
+        <span style="font-size:.75em;text-align:right">
+          <span style="color:${TIER_COLOR[d.tier]||'#9AA0A8'};font-weight:700">${d.tier}</span>
+          <span style="color:#6B7178"> · ${d.position}</span>
+        </span>
       </div>`;
     } else {
-      cards+=`<div class="pcard pcard-empty">Empty Slot</div>`;
+      cards+=`<div class="bc-pcard empty">Empty Slot</div>`;
     }
   }
 
   return `
   <div>
-    <div class="section-title" style="color:${color}">${name}</div>
-    <div class="metric">
-      <div class="lbl">GOLD</div>
+    <div class="bc-panel-title ${cls}">${name}</div>
+    <div class="bc-metric">
+      <div class="lbl">Gold</div>
       <div class="val" style="color:${color}">${pts}G</div>
-      <div style="background:#1a1a2e;border-radius:3px;height:6px;margin:5px 0 2px;overflow:hidden">
-        <div style="width:${Math.round(100*pts/sp)}%;height:100%;background:${color};border-radius:3px;transition:width .6s"></div>
-      </div>
-      ${spent>0?`<div style="font-size:.75em;color:#aaa">-${spent} 소모</div>`:''}
+      <div class="bar"><i style="width:${Math.round(100*pts/sp)}%;background:${color}"></i></div>
+      ${spent>0?`<div style="font-size:.68em;color:#6B7178;margin-top:4px">-${spent} 소모</div>`:''}
     </div>
     ${cards}
   </div>`;
 }
 
-// ── 결과 ──────────────────────────────────────────────────────────────────
 function renderResult(){
+  document.body.className = 'theme-bcast';
   const trade   = gs.trade;
   const selA    = gs.sel_a || [];
   const selB    = gs.sel_b || [];
@@ -789,46 +746,42 @@ function renderResult(){
 
   let tradeCenter;
   if(trade){
-    const bcolor = canSwap ? '#00C060' : '#C89B3C';
+    const bcolor = canSwap ? '#4EE1FF' : '#FFD166';
     const txt = canSwap
-      ? `🔵 ${selA.length}명 ↔ 🔴 ${selB.length}명  ✅ 교환 가능!`
-      : `🔵 ${selA.length}명 선택 ↔ 🔴 ${selB.length}명 선택  (수를 맞춰주세요)`;
+      ? `블루 ${selA.length}명 ↔ 레드 ${selB.length}명 · 교환 가능`
+      : `블루 ${selA.length}명 선택 ↔ 레드 ${selB.length}명 선택 (수를 맞춰주세요)`;
     tradeCenter=`
-    <div class="trade-status" style="border-color:${bcolor};color:${bcolor}">${txt}</div>
-    <div style="color:#aaa;font-size:.82em;text-align:center;margin-bottom:8px">
-      양 팀 선수 카드를 클릭해 선택하세요
-    </div>
-    <button onclick="send('trade_confirm')" ${canSwap?'':'disabled'} style="margin-bottom:6px">
-      ✅ 교환 확정
+    <div style="text-align:center;padding:12px;border:1px solid ${bcolor};color:${bcolor};font-weight:700;margin-bottom:10px">${txt}</div>
+    <div style="color:#6B7178;font-size:.8em;text-align:center;margin-bottom:10px">양 팀 선수 카드를 클릭해 선택하세요</div>
+    <button onclick="send('trade_confirm')" ${canSwap?'':'disabled'} style="margin-bottom:8px">
+      교환 확정
     </button>
-    <button onclick="send('trade_cancel')" style="border-color:#888;color:#888">
-      ❌ 취소
-    </button>`;
+    <button class="outline" onclick="send('trade_cancel')">취소</button>`;
   } else {
     tradeCenter=`
-    <button onclick="send('trade_start')" style="margin-bottom:6px">🔄 트레이드 시작</button>
-    <button onclick="send('reset')" style="border-color:#555;color:#555">🔁 새 게임</button>`;
+    <button onclick="send('trade_start')" style="margin-bottom:8px">트레이드 시작</button>
+    <button class="bare" onclick="send('reset')">새 게임</button>`;
   }
 
   const hist = (gs.history||[]).slice().reverse().map(h=>`
-    <div class="hist-item hist-${h.type}">${h.result}</div>`).join('');
+    <div class="bc-hist ${h.type}">${h.result}</div>`).join('');
 
   document.getElementById('app').innerHTML=`
-  <h1>🏆 드래프트 완료!</h1>
-  <div style="text-align:center;margin-bottom:6px">
-    <button onclick="goHome()"
-      style="width:auto;padding:5px 16px;font-size:.82em;border-color:#555;color:#888">
-      🏠 홈으로
-    </button>
-  </div>
-  <div style="max-width:960px;margin:0 auto">
-    <div class="auction-grid">
+  <div class="bc-wrap">
+    <div class="bc-title">
+      <div class="bc-vs">Draft Complete</div>
+      <div class="bc-h1">최종 결과</div>
+    </div>
+    <div style="text-align:center;margin-bottom:12px">
+      <button class="bare" onclick="goHome()" style="width:auto;padding:6px 16px">홈으로</button>
+    </div>
+    <div class="bc-grid">
       ${teamA}
       <div>
-        <div class="card">${tradeCenter}</div>
+        <div class="bc-panel">${tradeCenter}</div>
         ${hist?`
-        <details class="card">
-          <summary style="cursor:pointer;color:#aaa;font-size:.85em">📋 전체 경매 기록</summary>
+        <details class="bc-panel" style="margin-top:10px">
+          <summary style="cursor:pointer;color:#6B7178;font-size:.82em;font-weight:600">전체 경매 기록</summary>
           <div style="margin-top:8px">${hist}</div>
         </details>`:''}
       </div>
@@ -839,9 +792,9 @@ function renderResult(){
 
 function buildResultTeam(team, tradeMode){
   const t      = team==='a' ? gs.team_a : gs.team_b;
-  const color  = team==='a' ? '#0AC8B9' : '#E91E63';
-  const name   = team==='a' ? '🔵 BLUE TEAM' : '🔴 RED TEAM';
-  const cls    = team==='a' ? 'pcard-a' : 'pcard-b';
+  const color  = team==='a' ? '#4EE1FF' : '#FF4655';
+  const name   = team==='a' ? 'BLUE TEAM' : 'RED TEAM';
+  const cls    = team==='a' ? 'blue' : 'red';
   const sel    = team==='a' ? (gs.sel_a||[]) : (gs.sel_b||[]);
   const sp     = gs.cfg?.sp || 100;
   const pts    = t?.points ?? sp;
@@ -852,36 +805,28 @@ function buildResultTeam(team, tradeMode){
   for(let i=0;i<members.length;i++){
     const m  = members[i];
     const d  = (gs.all_players||{})[m]||{tier:'언랭',position:'미정'};
-    const tc = TIER_COLOR[d.tier]||'#888';
-    const pi = POS_ICON[d.position]||'❓';
-    const icon = i===0?'👑':String(i);
+    const isLeader = i===0;
     const isSel = sel.includes(m);
-    if(tradeMode){
-      cards+=`<div class="pcard ${cls} ${isSel?'pcard-sel':''}"
-        onclick="send('trade_toggle',{player:'${m}',team:'${team}'})"
-        style="cursor:pointer">
-        <span style="min-width:24px">${isSel?'✅':icon}</span>
-        <span style="flex:1;margin:0 6px">${m}</span>
-        <span style="color:${tc};font-size:.78em;margin-right:4px">${d.tier}</span>
-        <span style="font-size:.8em;color:#aaa">${pi}${d.position}</span>
-      </div>`;
-    } else {
-      cards+=`<div class="pcard ${cls}">
-        <span style="min-width:24px">${icon}</span>
-        <span style="flex:1;margin:0 6px">${m}</span>
-        <span style="color:${tc};font-size:.78em;margin-right:4px">${d.tier}</span>
-        <span style="font-size:.8em;color:#aaa">${pi}${d.position}</span>
-      </div>`;
-    }
+    const marker = isSel ? '✓' : (isLeader ? '★' : String(i));
+    cards+=`<div class="bc-pcard ${cls}"
+      style="${isLeader?'border-left-width:5px':''}${tradeMode?`cursor:pointer;${isSel?'background:#1c1e22':''}`:''}"
+      ${tradeMode?`onclick="send('trade_toggle',{player:'${m}',team:'${team}'})"`:''}>
+      <span style="min-width:16px;font-size:.8em;color:${isSel?color:'#6B7178'}">${marker}</span>
+      <span style="flex:1;margin:0 8px;color:#EDEFF2">${m}</span>
+      <span style="font-size:.75em;text-align:right">
+        <span style="color:${TIER_COLOR[d.tier]||'#9AA0A8'};font-weight:700">${d.tier}</span>
+        <span style="color:#6B7178"> · ${d.position}</span>
+      </span>
+    </div>`;
   }
 
   return `
   <div>
-    <div class="section-title" style="color:${color}">${name}</div>
-    <div class="metric">
-      <div class="lbl">최종 GOLD</div>
+    <div class="bc-panel-title ${cls}">${name}</div>
+    <div class="bc-metric">
+      <div class="lbl">최종 Gold</div>
       <div class="val" style="color:${color}">${pts}G</div>
-      ${spent>0?`<div style="font-size:.75em;color:#aaa">-${spent} 소모</div>`:''}
+      ${spent>0?`<div style="font-size:.68em;color:#6B7178;margin-top:4px">-${spent} 소모</div>`:''}
     </div>
     ${cards}
   </div>`;
