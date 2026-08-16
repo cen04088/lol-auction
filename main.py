@@ -1,7 +1,14 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from pydantic import BaseModel
+from dotenv import load_dotenv
 import asyncio, json, random, string, time
+
+load_dotenv()
+
+import balance as balance_mod
+import riot_api
 
 app = FastAPI()
 
@@ -448,6 +455,64 @@ async def ws_endpoint(ws: WebSocket, room_id: str, role: str):
             if room.tick and not room.tick.done():
                 room.tick.cancel()
             rooms.pop(room_id, None)
+
+
+# ── 밸런싱 모드 (라이엇 API 기반 자동 팀 구성) ────────────────────────────────
+class LookupPlayer(BaseModel):
+    name: str
+    riot_id: str
+
+
+class LookupRequest(BaseModel):
+    players: list[LookupPlayer]
+
+
+class ComputePlayer(BaseModel):
+    name: str
+    position: str
+    tier_ko: str
+    rank: str | None = None
+    lp: int = 0
+
+
+class ComputeRequest(BaseModel):
+    players: list[ComputePlayer]
+
+
+@app.post("/api/balance/lookup")
+async def balance_lookup(req: LookupRequest):
+    try:
+        results = await riot_api.lookup_players([p.riot_id for p in req.players])
+    except RuntimeError as e:
+        raise HTTPException(500, str(e))
+    return {
+        "players": [
+            {"name": p.name, "riot_id": p.riot_id, **r}
+            for p, r in zip(req.players, results)
+        ]
+    }
+
+
+@app.post("/api/balance/compute")
+async def balance_compute(req: ComputeRequest):
+    if len(req.players) != 10:
+        raise HTTPException(400, "정확히 10명이 필요합니다.")
+    names = [p.name for p in req.players]
+    if len(set(names)) != 10:
+        raise HTTPException(400, "소환사명이 중복되었습니다.")
+
+    enriched = [
+        {
+            "name": p.name,
+            "position": p.position,
+            "tier_ko": p.tier_ko,
+            "rank": p.rank,
+            "lp": p.lp,
+            "score": balance_mod.tier_score(p.tier_ko, p.rank, p.lp),
+        }
+        for p in req.players
+    ]
+    return balance_mod.find_best_teams(enriched)
 
 
 @app.get("/")

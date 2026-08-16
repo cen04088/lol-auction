@@ -4,100 +4,208 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>⚔️ 롤 내전 경매</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+<link rel="stylesheet" as="style" crossorigin
+  href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&display=swap">
 <style>
+:root{
+  /* ── 배경 ── */
+  --bg-0:#04070c; --bg-1:#0a1420; --bg-2:#0e1c2e;
+  --panel:rgba(7,14,24,.74); --panel-solid:#0b1520;
+  --panel-hi:rgba(255,255,255,.03);
+  /* ── 골드(헥스텍) 램프 ── */
+  --gold-100:#F1E6C8; --gold-300:#D9B25C; --gold-400:#C89B3C; --gold-600:#8f6c26; --gold-900:#241a08;
+  --gold-line:rgba(217,178,92,.28); --gold-line-soft:rgba(217,178,92,.14);
+  /* ── 팀 컬러 ── */
+  --cyan:#12D6C4; --cyan-dim:rgba(18,214,196,.12);
+  --crimson:#EF4868; --crimson-dim:rgba(239,72,104,.12);
+  --green:#20D375;
+  /* ── 타이포 ── */
+  --font-ui:'Pretendard Variable','Pretendard','Segoe UI',sans-serif;
+  --font-display:'Cinzel','Pretendard Variable',serif;
+  /* ── 그림자/이징 ── */
+  --shadow-card:0 1px 0 var(--panel-hi) inset, 0 10px 28px rgba(0,0,0,.5), 0 0 0 1px rgba(0,0,0,.3);
+  --ease:cubic-bezier(.2,.7,.3,1);
+}
+
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',sans-serif;background:linear-gradient(180deg,#091428,#0A0A0C);
-  color:#C89B3C;min-height:100vh;padding:10px}
-h1{text-align:center;padding:16px 0 8px;font-size:1.6em;text-shadow:0 0 10px rgba(200,155,60,.5)}
-h2{color:#C89B3C;margin-bottom:12px;font-size:1.2em}
-h3{color:#C89B3C;margin-bottom:8px;font-size:1em}
-button{background:#1E2328;color:#C89B3C;border:2px solid #C89B3C;padding:10px 18px;
-  border-radius:6px;font-size:.95em;font-weight:700;cursor:pointer;transition:.2s;width:100%;margin:3px 0}
-button:hover{background:#C89B3C;color:#1E2328}
-button:disabled{opacity:.4;cursor:not-allowed;background:#1E2328;color:#555;border-color:#555}
-input,select{background:#0d1b2a;color:#C89B3C;border:1px solid #C89B3C;padding:8px 12px;
-  border-radius:5px;font-size:.95em;width:100%;margin:3px 0}
-input::placeholder{color:#555}
-label{color:#C89B3C;font-size:.9em;font-weight:600;display:block;margin:6px 0 2px}
-.card{background:rgba(1,10,19,.8);border:1px solid #C89B3C;border-radius:10px;padding:16px;margin:8px 0}
+
+::selection{background:rgba(217,178,92,.35);color:#fff}
+*:focus-visible{outline:2px solid var(--gold-300);outline-offset:2px;border-radius:4px}
+
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--bg-0)}
+::-webkit-scrollbar-thumb{background:linear-gradient(var(--gold-600),var(--gold-900));border-radius:6px;border:2px solid var(--bg-0)}
+
+body{
+  font-family:var(--font-ui);
+  background:
+    radial-gradient(1100px 480px at 50% -8%, rgba(217,178,92,.10), transparent 60%),
+    radial-gradient(900px 500px at 100% 100%, rgba(18,214,196,.05), transparent 55%),
+    radial-gradient(900px 500px at 0% 100%, rgba(239,72,104,.05), transparent 55%),
+    linear-gradient(180deg,var(--bg-1),var(--bg-0) 60%);
+  background-attachment:fixed;
+  color:var(--gold-400);min-height:100vh;padding:14px;
+  letter-spacing:.1px;
+}
+
+h1{
+  text-align:center;padding:20px 0 10px;font-size:1.7em;font-weight:800;
+  color:var(--gold-100);letter-spacing:.4px;
+  text-shadow:0 0 24px rgba(217,178,92,.45), 0 1px 0 rgba(0,0,0,.4);
+}
+h2{color:var(--gold-100);margin-bottom:12px;font-size:1.2em;font-weight:700}
+h3{color:var(--gold-300);margin-bottom:8px;font-size:1em;font-weight:700;letter-spacing:.2px}
+
+button{
+  background:linear-gradient(180deg,#1b2129,#12161b);
+  color:var(--gold-300);border:1px solid var(--gold-line);
+  padding:11px 18px;border-radius:8px;font-size:.95em;font-weight:700;letter-spacing:.2px;
+  cursor:pointer;transition:transform .15s var(--ease),box-shadow .2s var(--ease),
+    background .2s var(--ease),color .2s var(--ease),border-color .2s var(--ease);
+  width:100%;margin:3px 0;
+  box-shadow:0 1px 0 rgba(255,255,255,.04) inset, 0 4px 12px rgba(0,0,0,.35);
+}
+button:hover{
+  background:linear-gradient(180deg,var(--gold-300),var(--gold-600));
+  color:#161311;border-color:var(--gold-100);
+  box-shadow:0 0 0 1px var(--gold-line), 0 6px 20px rgba(217,178,92,.25);
+  transform:translateY(-1px);
+}
+button:active{transform:translateY(0)}
+button:disabled{opacity:.38;cursor:not-allowed;background:#12161b;color:#556;border-color:#333;
+  transform:none;box-shadow:none}
+
+input,select{
+  background:#0a1421;color:var(--gold-300);border:1px solid var(--gold-line);
+  padding:9px 12px;border-radius:7px;font-size:.95em;width:100%;margin:3px 0;
+  transition:border-color .2s var(--ease),box-shadow .2s var(--ease);
+}
+input:hover,select:hover{border-color:var(--gold-line-soft)}
+input:focus,select:focus{
+  outline:none;border-color:var(--gold-300);
+  box-shadow:0 0 0 3px rgba(217,178,92,.16);
+}
+input::placeholder{color:#4a5568}
+label{color:var(--gold-300);font-size:.86em;font-weight:600;display:block;margin:6px 0 3px;letter-spacing:.2px}
+
+.card{
+  background:var(--panel);backdrop-filter:blur(6px);
+  border:1px solid var(--gold-line);border-radius:14px;padding:18px;margin:10px 0;
+  box-shadow:var(--shadow-card);
+  position:relative;
+}
+.card::before{
+  content:'';position:absolute;inset:0;border-radius:14px;padding:1px;pointer-events:none;
+  background:linear-gradient(160deg,rgba(217,178,92,.28),transparent 30%,transparent 70%,rgba(217,178,92,.1));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;
+}
 .row{display:flex;gap:8px}
 .col{flex:1}
-.blue{color:#0AC8B9}
-.red{color:#E91E63}
-.gold{color:#C89B3C}
-.gray{color:#aaa}
-.tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.8em;font-weight:700}
-.tag-blue{border:1px solid #0AC8B9;color:#0AC8B9}
-.tag-red{border:1px solid #E91E63;color:#E91E63}
-.tag-gold{border:1px solid #C89B3C;color:#C89B3C}
-.tag-gray{border:1px solid #555;color:#555}
+.blue{color:var(--cyan)}
+.red{color:var(--crimson)}
+.gold{color:var(--gold-300)}
+.gray{color:#8a94a3}
+
+.tag{display:inline-block;padding:3px 9px;border-radius:5px;font-size:.78em;font-weight:700;letter-spacing:.2px}
+.tag-blue{border:1px solid var(--cyan);color:var(--cyan);background:var(--cyan-dim)}
+.tag-red{border:1px solid var(--crimson);color:var(--crimson);background:var(--crimson-dim)}
+.tag-gold{border:1px solid var(--gold-300);color:var(--gold-300);background:rgba(217,178,92,.1)}
+.tag-gray{border:1px solid #444;color:#8a94a3}
+
 /* Player card */
 .pcard{display:flex;align-items:center;justify-content:space-between;
-  padding:12px 14px;border-radius:6px;margin:5px 0;font-weight:700;font-size:.97em;min-height:46px}
-.pcard-a{border:2px solid #0AC8B9;background:rgba(10,200,185,.08);color:#0AC8B9}
-.pcard-b{border:2px solid #E91E63;background:rgba(233,30,99,.08);color:#E91E63}
-.pcard-empty{border:1px dashed #333;color:#444;justify-content:center;font-style:italic}
-.pcard-sel{border:2px solid #C89B3C!important;background:rgba(200,155,60,.15)!important;cursor:pointer}
+  padding:12px 14px;border-radius:9px;margin:6px 0;font-weight:700;font-size:.97em;min-height:46px;
+  transition:transform .15s var(--ease),box-shadow .2s var(--ease);
+  box-shadow:0 1px 0 rgba(255,255,255,.03) inset, 0 3px 10px rgba(0,0,0,.3);
+}
+.pcard-a{border:1.5px solid var(--cyan);background:linear-gradient(180deg,var(--cyan-dim),rgba(18,214,196,.03));color:var(--cyan)}
+.pcard-b{border:1.5px solid var(--crimson);background:linear-gradient(180deg,var(--crimson-dim),rgba(239,72,104,.03));color:var(--crimson)}
+.pcard-empty{border:1px dashed #33404f;color:#4a5568;justify-content:center;font-style:italic;box-shadow:none}
+.pcard-sel{border:1.5px solid var(--gold-300)!important;background:rgba(217,178,92,.16)!important;cursor:pointer;
+  box-shadow:0 0 0 2px var(--gold-line-soft)!important}
+.pcard[onclick]{cursor:pointer}
+.pcard[onclick]:hover{transform:translateY(-1px)}
 .pcard button{width:auto;padding:2px 8px;font-size:.8em;margin:0 0 0 6px}
+
 /* Timer */
-.timer-box{border-radius:8px;padding:12px;text-align:center;margin-bottom:10px;border:2px solid #00C060}
-.timer-num{font-size:2.2em;font-weight:900}
-.timer-bar{background:#333;border-radius:3px;height:6px;margin-top:6px}
-.timer-fill{height:100%;border-radius:3px;transition:width .5s,background .5s}
+.timer-box{border-radius:10px;padding:13px;text-align:center;margin-bottom:10px;
+  border:1.5px solid var(--green);background:rgba(32,211,117,.05)}
+.timer-num{font-family:var(--font-display);font-size:2.2em;font-weight:900;letter-spacing:.5px}
+.timer-bar{background:#1a2230;border-radius:4px;height:6px;margin-top:8px;overflow:hidden}
+.timer-fill{height:100%;border-radius:4px;transition:width .5s,background .5s}
+
 /* Auction target */
-.target-box{background:radial-gradient(circle,rgba(200,155,60,.12),transparent 70%);
-  padding:16px;text-align:center;border-bottom:2px solid #C89B3C;margin-bottom:10px}
-.target-name{font-size:2.4em;font-weight:900;color:#C89B3C;text-shadow:0 0 20px rgba(200,155,60,.7)}
+.target-box{background:radial-gradient(circle,rgba(217,178,92,.14),transparent 70%);
+  padding:18px;text-align:center;border-bottom:1px solid var(--gold-line);margin-bottom:10px}
+.target-name{font-family:var(--font-display);font-size:2.3em;font-weight:900;color:var(--gold-100);
+  text-shadow:0 0 26px rgba(217,178,92,.6);letter-spacing:.5px}
+
 /* Bid area */
-.bid-area{background:rgba(1,10,19,.8);border:1px solid #C89B3C;border-radius:10px;padding:14px;margin:8px 0}
-.bid-status{text-align:center;padding:12px;border-radius:8px;margin:4px 0;font-weight:700;font-size:1em}
-.bid-waiting{border:1px dashed #555;color:#777}
-.bid-done{border:1px solid #00C060;color:#00C060;background:rgba(0,192,96,.07)}
-.bid-reveal{font-size:1.4em;padding:14px;border-radius:8px;text-align:center;
-  border:2px solid #C89B3C;background:rgba(200,155,60,.1);margin:6px 0;animation:pop .3s ease}
+.bid-area{background:var(--panel);border:1px solid var(--gold-line);border-radius:12px;padding:15px;margin:8px 0;
+  box-shadow:var(--shadow-card)}
+.bid-status{text-align:center;padding:12px;border-radius:9px;margin:4px 0;font-weight:700;font-size:1em}
+.bid-waiting{border:1px dashed #3a4656;color:#8a94a3}
+.bid-done{border:1px solid var(--green);color:var(--green);background:rgba(32,211,117,.07)}
+.bid-reveal{font-family:var(--font-display);font-size:1.4em;padding:14px;border-radius:9px;text-align:center;
+  border:1.5px solid var(--gold-300);background:rgba(217,178,92,.1);margin:6px 0;animation:pop .3s ease}
 @keyframes pop{from{transform:scale(.95);opacity:.6}to{transform:scale(1);opacity:1}}
 @keyframes pulse-danger{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.05);opacity:.8}}
 @keyframes slide-left{from{transform:translateX(-24px);opacity:0}to{transform:translateX(0);opacity:1}}
 @keyframes slide-right{from{transform:translateX(24px);opacity:0}to{transform:translateX(0);opacity:1}}
-@keyframes winner-glow{0%{box-shadow:0 0 0 rgba(0,192,96,0)}60%{box-shadow:0 0 28px rgba(0,192,96,.75)}100%{box-shadow:0 0 12px rgba(0,192,96,.35)}}
+@keyframes winner-glow{0%{box-shadow:0 0 0 rgba(32,211,117,0)}60%{box-shadow:0 0 28px rgba(32,211,117,.75)}100%{box-shadow:0 0 12px rgba(32,211,117,.35)}}
 @keyframes toast-in{from{top:0;opacity:0}to{top:24px;opacity:1}}
 .timer-danger{animation:pulse-danger .6s ease-in-out infinite}
+
 /* History */
-.hist-item{padding:5px 10px;border-radius:4px;margin:3px 0;font-size:.82em;font-weight:600;border-left:3px solid}
-.hist-blue{border-color:#0AC8B9;background:rgba(10,200,185,.06)}
-.hist-red{border-color:#E91E63;background:rgba(233,30,99,.06)}
-.hist-tie{border-color:#C89B3C;background:rgba(200,155,60,.06)}
+.hist-item{padding:6px 10px;border-radius:6px;margin:3px 0;font-size:.82em;font-weight:600;border-left:3px solid;
+  background:rgba(255,255,255,.015)}
+.hist-blue{border-color:var(--cyan);background:var(--cyan-dim)}
+.hist-red{border-color:var(--crimson);background:var(--crimson-dim)}
+.hist-tie{border-color:var(--gold-300);background:rgba(217,178,92,.06)}
+
 /* Trade status */
-.trade-status{text-align:center;padding:12px;border-radius:8px;border:2px solid #C89B3C;
-  margin:8px 0;font-weight:700}
+.trade-status{text-align:center;padding:13px;border-radius:9px;border:1.5px solid var(--gold-300);
+  margin:8px 0;font-weight:700;background:rgba(217,178,92,.05)}
+
 /* Room code display */
-.room-code{font-size:2.8em;font-weight:900;letter-spacing:6px;text-align:center;
-  padding:16px;border:2px solid #C89B3C;border-radius:10px;color:#C89B3C;
-  text-shadow:0 0 15px rgba(200,155,60,.6);margin:10px 0}
+.room-code{font-family:var(--font-display);font-size:2.7em;font-weight:900;letter-spacing:7px;text-align:center;
+  padding:18px;border:1.5px solid var(--gold-300);border-radius:12px;color:var(--gold-100);
+  text-shadow:0 0 18px rgba(217,178,92,.6);margin:10px 0;background:rgba(217,178,92,.05)}
+
 /* Roles */
-.role-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.role-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;
+  box-shadow:0 0 8px currentColor}
+
 /* Setup table */
 table{width:100%;border-collapse:collapse;font-size:.85em}
-th{background:#0d1b2a;color:#C89B3C;padding:8px;text-align:left;border:1px solid #C89B3C33}
-td{padding:4px 6px;border:1px solid #C89B3C22}
-td input,td select{margin:0;padding:5px 8px;font-size:.85em}
+th{background:#0a1420;color:var(--gold-300);padding:9px 8px;text-align:left;
+  border:1px solid var(--gold-line-soft);font-weight:700;letter-spacing:.2px}
+td{padding:5px 6px;border:1px solid rgba(217,178,92,.1)}
+td input,td select{margin:0;padding:6px 8px;font-size:.85em}
+
 /* Grid layout for auction */
-.auction-grid{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:12px;max-width:1200px;margin:0 auto}
+.auction-grid{display:grid;grid-template-columns:1fr 1.3fr 1fr;gap:14px;max-width:1200px;margin:0 auto}
 @media(max-width:800px){.auction-grid{grid-template-columns:1fr}}
-.section-title{font-size:.95em;font-weight:700;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid #C89B3C44}
-.metric{background:rgba(1,10,19,.9);border:1px solid #C89B3C;border-radius:6px;
-  padding:8px 12px;margin-bottom:8px;text-align:center}
-.metric .val{font-size:1.3em;font-weight:900}
-.metric .lbl{font-size:.75em;color:#888}
+.section-title{font-size:.95em;font-weight:800;margin-bottom:10px;padding-bottom:6px;
+  border-bottom:1px solid var(--gold-line);letter-spacing:.3px;text-transform:uppercase}
+.metric{background:var(--panel-solid);border:1px solid var(--gold-line);border-radius:9px;
+  padding:10px 12px;margin-bottom:8px;text-align:center;box-shadow:var(--shadow-card)}
+.metric .val{font-family:var(--font-display);font-size:1.3em;font-weight:900}
+.metric .lbl{font-size:.72em;color:#7c8798;letter-spacing:.6px;text-transform:uppercase}
+
 /* Custom tooltip */
 .tip-wrap{position:relative;display:inline-flex;align-items:center}
 .tip-box{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
-  background:#0d1b2a;border:1px solid #C89B3C;border-radius:7px;padding:9px 12px;
-  color:#C89B3C;font-size:.8em;line-height:1.5;white-space:normal;width:210px;
+  background:var(--panel-solid);border:1px solid var(--gold-300);border-radius:8px;padding:10px 13px;
+  color:var(--gold-100);font-size:.8em;line-height:1.55;white-space:normal;width:210px;
   z-index:200;pointer-events:none;font-weight:400;text-align:left;
-  box-shadow:0 4px 16px rgba(0,0,0,.6)}
+  box-shadow:0 8px 22px rgba(0,0,0,.6)}
 .tip-box::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);
-  border:6px solid transparent;border-top-color:#C89B3C}
+  border:6px solid transparent;border-top-color:var(--gold-300)}
 .tip-wrap:hover .tip-box,.tip-wrap.open .tip-box{display:block}
 </style>
 </head>
@@ -324,6 +432,13 @@ function renderHome(){
         <option value="spectator">👁️ 관전자</option>
       </select>
       <button onclick="joinRoom()" style="margin-top:8px">참가하기</button>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:6px">🧮 밸런싱 모드</h3>
+      <div style="color:#aaa;font-size:.85em;margin-bottom:8px">
+        경매 없이, 라이엇ID의 솔로랭크 티어/LP와 포지션을 분석해 자동으로 가장 균형 잡힌 5:5 팀을 구성합니다.
+      </div>
+      <button onclick="renderBalanceSetup()" style="border-color:#0AC8B9;color:#0AC8B9">🧮 밸런싱 모드 시작</button>
     </div>
   </div>`;
 }
@@ -884,6 +999,176 @@ function buildResultTeam(team, tradeMode){
       ${spent>0?`<div style="font-size:.75em;color:#aaa">-${spent} 소모</div>`:''}
     </div>
     ${cards}
+  </div>`;
+}
+
+// ── 밸런싱 모드 (라이엇 API 기반 자동 팀 구성) ─────────────────────────────
+function renderBalanceSetup(){
+  if(ws){ ws.close(); ws=null; gs=null; myRole=null; myRoom=null; }
+  const pOpts = POSITIONS.map(p=>`<option>${p}</option>`).join('');
+  const tOpts = TIERS.map(t=>`<option>${t}</option>`).join('');
+  let rows='';
+  for(let i=0;i<10;i++){
+    rows+=`<tr>
+      <td><span style="color:#888;font-size:.8em">${i+1}</span></td>
+      <td><input id="bn${i}" placeholder="소환사명"></td>
+      <td><input id="brid${i}" placeholder="게임명#태그"></td>
+      <td><select id="bp${i}">${pOpts}</select></td>
+      <td><select id="bt${i}">${tOpts}</select></td>
+      <td id="binfo${i}" style="font-size:.78em;color:#888;white-space:nowrap">-</td>
+    </tr>`;
+  }
+  document.getElementById('app').innerHTML=`
+  <h1>🧮 밸런싱 모드</h1>
+  <div style="max-width:1000px;margin:0 auto">
+    <div class="card" style="color:#aaa;font-size:.86em">
+      라이엇ID(예: Hide on bush#KR1)를 입력하고 전적을 조회하면 솔로랭크 티어·LP를 자동으로 불러옵니다.
+      조회에 실패했거나 언랭인 경우 티어를 직접 선택해 보정할 수 있습니다.
+    </div>
+    <div class="card">
+      <h3>👥 선수 등록 (10명)</h3>
+      <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>#</th><th>소환사명</th><th>라이엇ID</th><th>포지션</th><th>티어</th><th>조회 결과</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      </div>
+      <button id="lookup-btn" onclick="doLookup()" style="margin-top:10px">🔍 전적 조회</button>
+    </div>
+    <div class="card">
+      <div id="bal-status" style="color:#aaa;font-size:.9em;margin-bottom:6px">
+        소환사명·라이엇ID 10명을 입력하고 전적을 조회하세요.
+      </div>
+      <button id="compute-btn" onclick="doCompute()" disabled>🧮 팀 구성하기</button>
+    </div>
+    <div class="card" style="text-align:center">
+      <button onclick="renderHome()" style="border-color:#555;color:#888;font-size:.9em">🏠 메인 화면으로</button>
+    </div>
+  </div>`;
+
+  for(let i=0;i<10;i++){
+    A(`bt${i}`).addEventListener('change', ()=>{
+      const infoEl = A(`binfo${i}`);
+      infoEl.dataset.rank=''; infoEl.dataset.lp='0';
+      infoEl.innerHTML = `<span style="color:#C89B3C">✏️ 수동 설정</span>`;
+    });
+  }
+}
+
+async function doLookup(){
+  const names=[], riotIds=[];
+  for(let i=0;i<10;i++){
+    const n=(A(`bn${i}`).value||'').trim();
+    const r=(A(`brid${i}`).value||'').trim();
+    if(!n || !r){ alert('모든 선수의 소환사명과 라이엇ID(게임명#태그)를 입력해주세요.'); return; }
+    names.push(n); riotIds.push(r);
+  }
+  if(new Set(names).size !== 10){ alert('소환사명이 중복되었습니다.'); return; }
+
+  const btn = A('lookup-btn');
+  btn.disabled = true; btn.textContent = '🔄 조회 중... (수 초 소요)';
+  try{
+    const res = await fetch('/api/balance/lookup', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({players: names.map((n,i)=>({name:n, riot_id:riotIds[i]}))})
+    });
+    if(!res.ok){
+      const e = await res.json().catch(()=>({}));
+      alert('조회 실패: ' + (e.detail || res.status));
+      return;
+    }
+    const data = await res.json();
+    data.players.forEach((p,i)=>{
+      const infoEl = A(`binfo${i}`);
+      const tSel   = A(`bt${i}`);
+      if(p.ok){
+        tSel.value = p.tier_ko;
+        infoEl.dataset.rank = p.rank || '';
+        infoEl.dataset.lp   = String(p.lp || 0);
+        const rk = p.rank ? ` ${p.rank}` : '';
+        const wl = p.tier !== 'UNRANKED' ? ` · ${p.wins}승 ${p.losses}패` : '';
+        infoEl.innerHTML = `<span style="color:${TIER_COLOR[p.tier_ko]||'#888'}">${p.tier_ko}${rk} ${p.lp}LP</span>${wl}`;
+      } else {
+        infoEl.dataset.rank=''; infoEl.dataset.lp='0';
+        infoEl.innerHTML = `<span style="color:#CF3F3F">⚠️ ${p.error}</span>`;
+      }
+    });
+    A('bal-status').textContent = '조회 완료. 필요하면 티어를 직접 수정한 뒤 팀을 구성하세요.';
+    A('compute-btn').disabled = false;
+  } finally {
+    btn.disabled = false; btn.textContent = '🔍 전적 조회';
+  }
+}
+
+async function doCompute(){
+  const players=[];
+  for(let i=0;i<10;i++){
+    const name     = (A(`bn${i}`).value||'').trim();
+    const position = A(`bp${i}`).value;
+    const tier_ko  = A(`bt${i}`).value;
+    const infoEl   = A(`binfo${i}`);
+    const rank = infoEl.dataset.rank || null;
+    const lp   = parseInt(infoEl.dataset.lp || '0') || 0;
+    players.push({name, position, tier_ko, rank, lp});
+  }
+  const btn = A('compute-btn');
+  btn.disabled = true; btn.textContent = '🔄 계산 중...';
+  try{
+    const res = await fetch('/api/balance/compute', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({players})
+    });
+    if(!res.ok){
+      const e = await res.json().catch(()=>({}));
+      alert('계산 실패: ' + (e.detail || res.status));
+      return;
+    }
+    renderBalanceResult(await res.json());
+  } finally {
+    btn.disabled = false; btn.textContent = '🧮 팀 구성하기';
+  }
+}
+
+function renderBalanceResult(result){
+  const buildTeam = (team, totalScore, color, label) => {
+    const cardCls = color === '#0AC8B9' ? 'pcard-a' : 'pcard-b';
+    const cards = team.map(p=>{
+      const tc = TIER_COLOR[p.tier_ko] || '#888';
+      const pi = POS_ICON[p.assigned_position] || '❓';
+      const mismatch = p.position !== '미정' && p.position !== p.assigned_position;
+      return `<div class="pcard ${cardCls}">
+        <span style="min-width:24px">${pi}</span>
+        <span style="flex:1;margin:0 6px">${p.name}${mismatch?` <span style="color:#CF3F3F;font-size:.78em">(희망:${p.position})</span>`:''}</span>
+        <span style="color:${tc};font-size:.78em;font-weight:700">${p.tier_ko}</span>
+      </div>`;
+    }).join('');
+    return `<div>
+      <div class="section-title" style="color:${color}">${label}</div>
+      <div class="metric">
+        <div class="lbl">팀 실력 점수 합</div>
+        <div class="val" style="color:${color}">${totalScore}</div>
+      </div>
+      ${cards}
+    </div>`;
+  };
+
+  const scoreDiff = Math.abs(result.score_a - result.score_b);
+  document.getElementById('app').innerHTML=`
+  <h1>🧮 밸런싱 결과</h1>
+  <div style="max-width:960px;margin:0 auto">
+    <div class="card" style="text-align:center">
+      <span class="gray">포지션 희망 불일치 </span><b style="color:${result.mismatches?'#CF3F3F':'#00C060'}">${result.mismatches}건</b>
+      &nbsp;|&nbsp;
+      <span class="gray">팀 간 점수 차이 </span><b class="gold">${scoreDiff}</b>
+    </div>
+    <div class="auction-grid">
+      ${buildTeam(result.team_a, result.score_a, '#0AC8B9', '🔵 BLUE TEAM')}
+      <div class="card" style="display:flex;flex-direction:column;gap:8px;justify-content:center">
+        <button onclick="renderBalanceSetup()">↩️ 선수 다시 설정</button>
+        <button onclick="renderHome()" style="border-color:#555;color:#888">🏠 홈으로</button>
+      </div>
+      ${buildTeam(result.team_b, result.score_b, '#E91E63', '🔴 RED TEAM')}
+    </div>
   </div>`;
 }
 
