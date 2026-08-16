@@ -890,6 +890,17 @@ function renderBalanceSetup(){
     <p class="sub">라이엇ID만 입력하면 소환사명·솔로랭크 티어/LP·최근 전적 기준 주 포지션까지 자동으로 채워집니다.
     감지 결과가 이상할 때만 직접 수정하세요.</p>
     <div class="card">
+      <h3>일괄 등록</h3>
+      <p style="font-size:.82em;color:var(--text-dim);margin-bottom:10px;line-height:1.6">
+        라이엇ID 10개를 줄바꿈으로 구분해 한 번에 붙여넣으면 아래 표가 자동으로 채워지고 바로 조회됩니다.
+      </p>
+      <textarea id="bulk-paste" rows="5" placeholder="Hide on bush#KR1&#10;Gumayusi#KR2&#10;..."
+        style="width:100%;resize:vertical;background:var(--bg-alt);border:1px solid var(--line);
+        border-radius:var(--radius-sm);color:var(--text);padding:10px 12px;font-family:inherit;
+        font-size:.88em;line-height:1.7"></textarea>
+      <button class="primary" onclick="doBulkFill()" style="margin-top:10px">붙여넣은 목록으로 채우고 조회</button>
+    </div>
+    <div class="card">
       <h3>선수 등록 (10명)</h3>
       <div style="overflow-x:auto">
       <table>
@@ -917,6 +928,23 @@ function renderBalanceSetup(){
         `<span style="color:var(--accent)">티어 수동 설정</span>`;
     });
   }
+}
+
+function doBulkFill(){
+  const raw = (A('bulk-paste').value || '').trim();
+  if(!raw){ alert('붙여넣을 라이엇ID 목록을 입력해주세요.'); return; }
+  const lines = raw.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);
+  if(lines.length !== 10){
+    alert(`정확히 10명이어야 합니다. (현재 ${lines.length}명 인식됨)`);
+    return;
+  }
+  const invalid = lines.filter(l => !l.includes('#'));
+  if(invalid.length){
+    alert(`형식이 올바르지 않은 항목이 있습니다 (게임명#태그 형식 필요):\n${invalid.join('\n')}`);
+    return;
+  }
+  lines.forEach((l,i)=>{ A(`brid${i}`).value = l; });
+  doLookup();
 }
 
 async function doLookup(){
