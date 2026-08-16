@@ -531,7 +531,6 @@ async def ws_endpoint(ws: WebSocket, room_id: str, role: str):
 
 # ── 밸런싱 모드 (라이엇 API 기반 자동 팀 구성) ────────────────────────────────
 class LookupPlayer(BaseModel):
-    name: str
     riot_id: str
 
 
@@ -559,7 +558,7 @@ async def balance_lookup(req: LookupRequest):
         raise HTTPException(500, str(e))
     return {
         "players": [
-            {"name": p.name, "riot_id": p.riot_id, **r}
+            {"riot_id": p.riot_id, **r}
             for p, r in zip(req.players, results)
         ]
     }

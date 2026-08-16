@@ -849,8 +849,7 @@ function renderBalanceSetup(){
   for(let i=0;i<10;i++){
     rows+=`<tr>
       <td style="color:#6B6557;font-size:.8em">${i+1}</td>
-      <td><input id="bn${i}" placeholder="소환사명"></td>
-      <td><input id="brid${i}" placeholder="게임명#태그"></td>
+      <td><input id="brid${i}" placeholder="게임명#태그 (예: Hide on bush#KR1)"></td>
       <td><select id="bp${i}">${pOpts}</select></td>
       <td><select id="bt${i}">${tOpts}</select></td>
       <td id="binfo${i}" style="font-size:.76em;color:#6B6557;white-space:nowrap">—</td>
@@ -860,13 +859,13 @@ function renderBalanceSetup(){
   <div class="hx-wrap" style="max-width:920px">
     <p class="hx-eyebrow" style="margin-top:16px">Auto Balance</p>
     <h1 class="hx-title">밸런싱 모드</h1>
-    <p class="hx-sub">라이엇ID(예: Hide on bush#KR1)를 조회하면 솔로랭크 티어·LP를 자동으로 불러옵니다.
-    조회 실패·언랭인 경우 티어를 직접 선택해 보정하세요.</p>
+    <p class="hx-sub">라이엇ID만 입력하면 소환사명·솔로랭크 티어/LP·최근 전적 기준 주 포지션까지 자동으로 채워집니다.
+    감지 결과가 이상할 때만 직접 수정하세요.</p>
     <div class="hx-panel">
       <h3 style="margin-bottom:14px">선수 등록 (10명)</h3>
       <div style="overflow-x:auto">
       <table>
-        <thead><tr><th>#</th><th>소환사명</th><th>라이엇ID</th><th>포지션</th><th>티어</th><th>조회 결과</th></tr></thead>
+        <thead><tr><th>#</th><th>라이엇ID</th><th>포지션</th><th>티어</th><th>조회 결과</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
       </div>
@@ -874,7 +873,7 @@ function renderBalanceSetup(){
     </div>
     <div class="hx-panel">
       <div id="bal-status" style="color:#9C9483;font-size:.88em;margin-bottom:12px">
-        소환사명·라이엇ID 10명을 입력하고 전적을 조회하세요.
+        라이엇ID 10명을 입력하고 전적을 조회하세요. (최근 전적까지 분석해 1분 내외 소요될 수 있습니다)
       </div>
       <button id="compute-btn" onclick="doCompute()" disabled>팀 구성하기</button>
     </div>
@@ -884,28 +883,29 @@ function renderBalanceSetup(){
   for(let i=0;i<10;i++){
     A(`bt${i}`).addEventListener('change', ()=>{
       const infoEl = A(`binfo${i}`);
+      const nm = infoEl.dataset.name;
       infoEl.dataset.rank=''; infoEl.dataset.lp='0';
-      infoEl.innerHTML = `<span style="color:#C8AA6E">수동 설정</span>`;
+      infoEl.innerHTML = (nm ? `<b style="color:#F0E6D2">${nm}</b> · ` : '') +
+        `<span style="color:#C8AA6E">티어 수동 설정</span>`;
     });
   }
 }
 
 async function doLookup(){
-  const names=[], riotIds=[];
+  const riotIds=[];
   for(let i=0;i<10;i++){
-    const n=(A(`bn${i}`).value||'').trim();
     const r=(A(`brid${i}`).value||'').trim();
-    if(!n || !r){ alert('모든 선수의 소환사명과 라이엇ID(게임명#태그)를 입력해주세요.'); return; }
-    names.push(n); riotIds.push(r);
+    if(!r){ alert('모든 선수의 라이엇ID(게임명#태그)를 입력해주세요.'); return; }
+    riotIds.push(r);
   }
-  if(new Set(names).size !== 10){ alert('소환사명이 중복되었습니다.'); return; }
+  if(new Set(riotIds.map(r=>r.toLowerCase())).size !== 10){ alert('라이엇ID가 중복되었습니다.'); return; }
 
   const btn = A('lookup-btn');
-  btn.disabled = true; btn.textContent = '조회 중... (수 초 소요)';
+  btn.disabled = true; btn.textContent = '조회 중... (최근 전적 분석 포함, 1분 내외 소요)';
   try{
     const res = await fetch('/api/balance/lookup', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({players: names.map((n,i)=>({name:n, riot_id:riotIds[i]}))})
+      body: JSON.stringify({players: riotIds.map(r=>({riot_id:r}))})
     });
     if(!res.ok){
       const e = await res.json().catch(()=>({}));
@@ -916,19 +916,25 @@ async function doLookup(){
     data.players.forEach((p,i)=>{
       const infoEl = A(`binfo${i}`);
       const tSel   = A(`bt${i}`);
+      const pSel   = A(`bp${i}`);
       if(p.ok){
         tSel.value = p.tier_ko;
+        if(p.detected_position) pSel.value = p.detected_position;
+        infoEl.dataset.name = p.name;
         infoEl.dataset.rank = p.rank || '';
         infoEl.dataset.lp   = String(p.lp || 0);
         const rk = p.rank ? ` ${p.rank}` : '';
         const wl = p.tier !== 'UNRANKED' ? ` · ${p.wins}승 ${p.losses}패` : '';
-        infoEl.innerHTML = `<span style="color:${TIER_COLOR[p.tier_ko]||'#9C9483'}">${p.tier_ko}${rk} ${p.lp}LP</span>${wl}`;
+        const posNote = p.detected_position && p.detected_position !== '미정'
+          ? ` · 최근 주포지션 ${p.detected_position}` : '';
+        infoEl.innerHTML = `<b style="color:#F0E6D2">${p.name}</b> · ` +
+          `<span style="color:${TIER_COLOR[p.tier_ko]||'#9C9483'}">${p.tier_ko}${rk} ${p.lp}LP</span>${wl}${posNote}`;
       } else {
-        infoEl.dataset.rank=''; infoEl.dataset.lp='0';
+        infoEl.dataset.name=''; infoEl.dataset.rank=''; infoEl.dataset.lp='0';
         infoEl.innerHTML = `<span style="color:#C8443C">${p.error}</span>`;
       }
     });
-    A('bal-status').textContent = '조회 완료. 필요하면 티어를 직접 수정한 뒤 팀을 구성하세요.';
+    A('bal-status').textContent = '조회 완료. 감지된 티어·포지션이 이상하면 직접 수정한 뒤 팀을 구성하세요.';
     A('compute-btn').disabled = false;
   } finally {
     btn.disabled = false; btn.textContent = '전적 조회';
@@ -938,10 +944,11 @@ async function doLookup(){
 async function doCompute(){
   const players=[];
   for(let i=0;i<10;i++){
-    const name     = (A(`bn${i}`).value||'').trim();
     const position = A(`bp${i}`).value;
     const tier_ko  = A(`bt${i}`).value;
     const infoEl   = A(`binfo${i}`);
+    const ridVal   = (A(`brid${i}`).value||'').trim();
+    const name = infoEl.dataset.name || ridVal.split('#')[0].trim() || `선수${i+1}`;
     const rank = infoEl.dataset.rank || null;
     const lp   = parseInt(infoEl.dataset.lp || '0') || 0;
     players.push({name, position, tier_ko, rank, lp});
@@ -972,7 +979,7 @@ function renderBalanceResult(result){
       const mismatch = p.position !== '미정' && p.position !== p.assigned_position;
       return `<div class="bc-pcard ${cls}">
         <span style="min-width:16px;font-size:.8em;color:#6B7178">${i}</span>
-        <span style="flex:1;margin:0 8px;color:#EDEFF2">${p.name}${mismatch?` <span style="color:#FFD166;font-size:.85em">(희망 ${p.position})</span>`:''}</span>
+        <span style="flex:1;margin:0 8px;color:#EDEFF2">${p.name}${mismatch?` <span style="color:#FFD166;font-size:.85em">(선택 ${p.position})</span>`:''}</span>
         <span style="font-size:.75em;text-align:right">
           <span style="color:${TIER_COLOR[p.tier_ko]||'#9AA0A8'};font-weight:700">${p.tier_ko}</span>
           <span style="color:#6B7178"> · ${p.assigned_position}</span>
@@ -998,7 +1005,7 @@ function renderBalanceResult(result){
       <div class="bc-h1">밸런싱 결과</div>
     </div>
     <div style="text-align:center;margin-bottom:14px;color:#9AA0A8;font-size:.85em">
-      포지션 희망 불일치 <b style="color:${result.mismatches?'#FF4655':'#4EE1FF'}">${result.mismatches}건</b>
+      포지션 배정 불일치 <b style="color:${result.mismatches?'#FF4655':'#4EE1FF'}">${result.mismatches}건</b>
       &nbsp;·&nbsp; 팀 간 점수 차이 <b style="color:#EDEFF2">${scoreDiff}</b>
     </div>
     <div class="bc-grid">
