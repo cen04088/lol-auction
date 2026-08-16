@@ -870,14 +870,39 @@ function buildResultTeam(team, tradeMode){
 // ══════════════════════════════════════════════════════════════════════════
 //  밸런싱 모드 — 라이엇 API 기반 자동 팀 구성
 // ══════════════════════════════════════════════════════════════════════════
+// ── 라이엇ID 히스토리 (localStorage 기반 "예상 리스트") ───────────────────
+// 라이엇 API엔 부분검색/자동완성이 없어서, 이 도구로 실제 조회했던 라이엇ID를
+// 기억해뒀다가 자동완성 후보로 띄우고 직전 10명 명단을 통째로 불러오는 방식으로 대신한다.
+function _loadRidHistory(){
+  try{ return JSON.parse(localStorage.getItem('lol_riot_id_history')||'[]'); }catch(e){ return []; }
+}
+function _saveRidHistory(riotIds){
+  try{
+    let hist = _loadRidHistory();
+    riotIds.forEach(r=>{
+      hist = hist.filter(h=>h.toLowerCase()!==r.toLowerCase());
+      hist.unshift(r);
+    });
+    localStorage.setItem('lol_riot_id_history', JSON.stringify(hist.slice(0,50)));
+  }catch(e){}
+}
+function _loadLastRoster(){
+  try{
+    const r = JSON.parse(localStorage.getItem('lol_last_roster')||'null');
+    return (Array.isArray(r) && r.length===10) ? r : null;
+  }catch(e){ return null; }
+}
+
 function renderBalanceSetup(){
   const pOpts = POSITIONS.map(p=>`<option>${p}</option>`).join('');
   const tOpts = TIERS.map(t=>`<option>${t}</option>`).join('');
+  const histOpts = _loadRidHistory().map(r=>`<option value="${r.replace(/"/g,'&quot;')}">`).join('');
+  const lastRoster = _loadLastRoster();
   let rows='';
   for(let i=0;i<10;i++){
     rows+=`<tr>
       <td style="color:var(--text-faint);font-size:.8em">${i+1}</td>
-      <td><input id="brid${i}" placeholder="게임명#태그 (예: Hide on bush#KR1)"></td>
+      <td><input id="brid${i}" list="rid-history" placeholder="게임명#태그 (예: Hide on bush#KR1)"></td>
       <td><select id="bp${i}">${pOpts}</select></td>
       <td><select id="bt${i}">${tOpts}</select></td>
       <td id="binfo${i}" style="font-size:.76em;color:var(--text-faint);white-space:nowrap">—</td>
@@ -885,6 +910,7 @@ function renderBalanceSetup(){
   }
   document.getElementById('app').innerHTML=`
   <div class="stack" style="max-width:920px">
+    <datalist id="rid-history">${histOpts}</datalist>
     <p class="eyebrow" style="margin-top:16px">Auto Balance</p>
     <h1 class="title">밸런싱 모드</h1>
     <p class="sub">라이엇ID만 입력하면 소환사명·솔로랭크 티어/LP·최근 전적 기준 주 포지션까지 자동으로 채워집니다.
@@ -893,12 +919,14 @@ function renderBalanceSetup(){
       <h3>일괄 등록</h3>
       <p style="font-size:.82em;color:var(--text-dim);margin-bottom:10px;line-height:1.6">
         라이엇ID 10개를 줄바꿈으로 구분해 한 번에 붙여넣으면 아래 표가 자동으로 채워지고 바로 조회됩니다.
+        표의 각 칸에 입력할 때도 예전에 조회했던 라이엇ID가 자동완성으로 뜹니다.
       </p>
       <textarea id="bulk-paste" rows="5" placeholder="Hide on bush#KR1&#10;Gumayusi#KR2&#10;..."
         style="width:100%;resize:vertical;background:var(--bg-alt);border:1px solid var(--line);
         border-radius:var(--radius-sm);color:var(--text);padding:10px 12px;font-family:inherit;
         font-size:.88em;line-height:1.7"></textarea>
       <button class="primary" onclick="doBulkFill()" style="margin-top:10px">붙여넣은 목록으로 채우고 조회</button>
+      ${lastRoster ? `<button class="bare" onclick="doLoadLastRoster()" style="margin-top:6px">지난번 10명 명단 불러와서 조회</button>` : ''}
     </div>
     <div class="card">
       <h3>선수 등록 (10명)</h3>
@@ -912,7 +940,7 @@ function renderBalanceSetup(){
     </div>
     <div class="card">
       <div id="bal-status" style="color:var(--text-dim);font-size:.88em;margin-bottom:12px">
-        라이엇ID 10명을 입력하고 전적을 조회하세요. (최근 전적까지 분석해 1분 내외 소요될 수 있습니다)
+        라이엇ID 10명을 입력하고 전적을 조회하세요. (최근 전적까지 분석해 30초 내외 소요, 재조회는 즉시 응답됩니다)
       </div>
       <button class="primary" id="compute-btn" onclick="doCompute()" disabled>팀 구성하기</button>
     </div>
@@ -930,21 +958,30 @@ function renderBalanceSetup(){
   }
 }
 
-function doBulkFill(){
-  const raw = (A('bulk-paste').value || '').trim();
-  if(!raw){ alert('붙여넣을 라이엇ID 목록을 입력해주세요.'); return; }
-  const lines = raw.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean);
-  if(lines.length !== 10){
-    alert(`정확히 10명이어야 합니다. (현재 ${lines.length}명 인식됨)`);
+function _fillRowsAndLookup(riotIds){
+  if(riotIds.length !== 10){
+    alert(`정확히 10명이어야 합니다. (현재 ${riotIds.length}명 인식됨)`);
     return;
   }
-  const invalid = lines.filter(l => !l.includes('#'));
+  const invalid = riotIds.filter(l => !l.includes('#'));
   if(invalid.length){
     alert(`형식이 올바르지 않은 항목이 있습니다 (게임명#태그 형식 필요):\n${invalid.join('\n')}`);
     return;
   }
-  lines.forEach((l,i)=>{ A(`brid${i}`).value = l; });
+  riotIds.forEach((l,i)=>{ A(`brid${i}`).value = l; });
   doLookup();
+}
+
+function doBulkFill(){
+  const raw = (A('bulk-paste').value || '').trim();
+  if(!raw){ alert('붙여넣을 라이엇ID 목록을 입력해주세요.'); return; }
+  _fillRowsAndLookup(raw.split(/[\n,]+/).map(s=>s.trim()).filter(Boolean));
+}
+
+function doLoadLastRoster(){
+  const roster = _loadLastRoster();
+  if(!roster){ alert('저장된 이전 명단이 없습니다.'); return; }
+  _fillRowsAndLookup(roster);
 }
 
 async function doLookup(){
@@ -956,8 +993,11 @@ async function doLookup(){
   }
   if(new Set(riotIds.map(r=>r.toLowerCase())).size !== 10){ alert('라이엇ID가 중복되었습니다.'); return; }
 
+  _saveRidHistory(riotIds);
+  try{ localStorage.setItem('lol_last_roster', JSON.stringify(riotIds)); }catch(e){}
+
   const btn = A('lookup-btn');
-  btn.disabled = true; btn.textContent = '조회 중... (최근 전적 분석 포함, 1분 내외 소요)';
+  btn.disabled = true; btn.textContent = '조회 중... (최근 전적 분석 포함, 30초 내외 소요)';
   try{
     const res = await fetch('/api/balance/lookup', {
       method:'POST', headers:{'Content-Type':'application/json'},
